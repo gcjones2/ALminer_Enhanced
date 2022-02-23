@@ -1,0 +1,370 @@
+'''
+conda activate py36
+python alminer_test.py 
+'''
+
+
+import alminer
+import pandas
+from astropy.io import ascii
+from matplotlib import pyplot as plt
+import matplotlib
+import numpy as np
+
+fs=13; fs2=25
+font = {'family' : 'normal','weight' : 'bold','size' : fs}
+matplotlib.rc('font', **font)
+
+almabands=[]
+almabands.append([3,84.0,116.0])
+almabands.append([4,125.0,163.0])
+almabands.append([5,158.0,211.0])
+almabands.append([6,211.0,275.0])
+almabands.append([7,275.0,373.0])
+almabands.append([8,385.0,500.0])
+almabands.append([9,602.0,720.0])
+almabands.append([10,787.0,950.0])
+
+colorscheme=["#f42457",
+"#71de5f",
+"#ca5ee5",
+"#bac400",
+"#0060c7",
+"#458e00",
+"#d823a4",
+"#00803b",
+"#c7003f",
+"#009575",
+"#dd7800",
+"#85a3ff",
+"#ff8d44",
+"#2f5095",
+"#f1be64",
+"#d9baf8",
+"#884e00",
+"#ffa5a1",
+"#8c9b65",
+"#833b54"]
+
+#Finds right subplot (2x4) based on frequency
+def getsubplotnum(freq):
+	tempnum=[-1,-1]
+	for sbi in range(len(almabands)):
+		if almabands[sbi][1]<freq and almabands[sbi][2]>freq:
+			if almabands[sbi][0]==3: tempnum=[0,0]
+			if almabands[sbi][0]==4: tempnum=[0,1]
+			if almabands[sbi][0]==5: tempnum=[0,2]
+			if almabands[sbi][0]==6: tempnum=[0,3]
+			if almabands[sbi][0]==7: tempnum=[1,0]
+			if almabands[sbi][0]==8: tempnum=[1,1]
+			if almabands[sbi][0]==9: tempnum=[1,2]
+			if almabands[sbi][0]==10: tempnum=[1,3]
+	return tempnum
+
+#Finds right subplot (2x4) based on number
+def getsubplotnum2(num):
+	tempnum=[-1,-1]
+	if num==0: tempnum=[0,0]
+	if num==1: tempnum=[0,1]
+	if num==2: tempnum=[0,2]
+	if num==3: tempnum=[0,3]
+	if num==4: tempnum=[1,0]
+	if num==5: tempnum=[1,1]
+	if num==6: tempnum=[1,2]
+	if num==7: tempnum=[1,3]
+	return tempnum
+
+#Finds right subplot (3x4) based on number
+def getsubplotnum3(num):
+	tempnum=[-1,-1]
+	if num==0: tempnum=[0,0]
+	if num==1: tempnum=[0,1]
+	if num==2: tempnum=[0,2]
+	if num==3: tempnum=[0,3]
+	if num==4: tempnum=[1,0]
+	if num==5: tempnum=[1,1]
+	if num==6: tempnum=[1,2]
+	if num==7: tempnum=[1,3]
+	if num==8: tempnum=[2,0]
+	if num==9: tempnum=[2,1]
+	if num==10: tempnum=[2,2]
+	if num==11: tempnum=[2,3]	
+	return tempnum
+
+#Checks if two values are within a delta of each other
+def iswithin(value1, value2, delta):
+	if value1+delta>value2 and value1-delta<value2:
+		return True
+	else:
+		return False
+
+#Returns indicies of sorted list
+def sortpl(projlist):
+	temp_pl=[]
+	for spli in range(len(projlist)):
+		spli2=projlist[spli].split('.')
+		temp_value_split=float(spli2[0])+float(spli2[2])*(1E-5)
+		temp_pl.append(temp_value_split)
+	index_split=np.argsort(temp_pl)
+	return index_split
+
+#-------
+
+#What should we do?
+make_spec_plots=True
+make_spat_plots=True
+make_tables=False
+make_line_plots=False
+
+infile='IFS_Table.txt'
+f=open(infile,'r')
+ff=f.readlines()
+
+if make_tables:
+	table_txt=open('LineTable.txt','w');table_txt.close()
+	table_txt=open('LineTable.txt','w')
+
+for i in range(35,len(ff)):
+
+	#Get RA and DEC of target
+	temp=ff[i].split(' ')
+	name=temp[0]
+	RA=(180./12.)*(float(temp[1])+(float(temp[2])/60.)+(float(temp[3])/3600.))
+	decfact=1.
+	if float(temp[4])<0.:
+		decfact=-1.
+		temp[4]=abs(float(temp[4]))
+	DEC=decfact*(float(temp[4])+(float(temp[5])/60.)+(float(temp[6])/3600.))
+	zred=float(temp[7])
+
+	#Get lines
+	lines=[]
+	linefile='splatalogue_1.tsv'
+	g=open(linefile)
+	gg=g.readlines()
+	for j in range(1,len(gg)):
+		templine=gg[j].split('\t')
+		templine_name=templine[0]+' '+templine[3]
+		templine_freq=float(templine[2].split(', ')[0])
+		lines.append([templine_name,templine_freq])
+	g.close()
+
+	#Query ALMA archive for RA, DEC
+	print('->',name)
+	myquery = alminer.conesearch(ra=RA, dec=DEC, search_radius=(30./60.), public=None)
+
+	#Get basic retails of each returned observation
+	EXPLORATION=alminer.explore(myquery, allcols=True, allrows=True)
+
+	master_MOUS_list=[]
+	try:
+		for e_i in EXPLORATION.index:
+			#Only get data for projects where target is in FoV
+			infov=False
+			RA0=RA*(np.pi/180.)
+			DEC0=DEC*(np.pi/180.)
+			RA1=EXPLORATION.loc[e_i]['RAJ2000']*(np.pi/180.)
+			DEC1=EXPLORATION.loc[e_i]['DEJ2000']*(np.pi/180.)
+			#temp_DEL=np.sin(DEC0)*np.sin(DEC1) + np.cos(DEC0)*np.cos(DEC1)*np.cos(RA0 - RA1)
+			#DEL=np.arccos(temp_DEL)*(180./np.pi)*3600.
+			DEL=np.sqrt((RA0-RA1)**2+(DEC0-DEC1)**2)*(180./np.pi)*3600.
+			if DEL<(0.5*EXPLORATION.loc[e_i]['FoV_arcsec']):
+				temp_MOUS_list={}
+				temp_MOUS_list['project_code']=EXPLORATION.loc[e_i]['project_code']
+				temp_MOUS_list['ALMA_source_name']=EXPLORATION.loc[e_i]['ALMA_source_name']
+				temp_MOUS_list['RAJ2000']=EXPLORATION.loc[e_i]['RAJ2000']
+				temp_MOUS_list['DEJ2000']=EXPLORATION.loc[e_i]['DEJ2000']
+				temp_MOUS_list['ang_res_arcsec']=EXPLORATION.loc[e_i]['ang_res_arcsec']
+				temp_MOUS_list['min_freq_GHz']=EXPLORATION.loc[e_i]['min_freq_GHz']
+				temp_MOUS_list['max_freq_GHz']=EXPLORATION.loc[e_i]['max_freq_GHz']
+				temp_MOUS_list['freq_res_kHz']=EXPLORATION.loc[e_i]['freq_res_kHz']
+				temp_MOUS_list['FoV_arcsec']=EXPLORATION.loc[e_i]['FoV_arcsec'] 
+				temp_MOUS_list['data_rights']=EXPLORATION.loc[e_i]['data_rights'] 
+				temp_MOUS_list['t_exptime']=EXPLORATION.loc[e_i]['t_exptime'] 
+				master_MOUS_list.append(temp_MOUS_list)
+	except AttributeError:
+		pass
+				
+	if make_spec_plots:
+		#Plot spectral coverage
+		fig, axes = plt.subplots(2,4,figsize=(10,8))
+		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
+		bigstep_x=np.arange(84.0,950.0,0.1)
+		bigstep_y=np.zeros(len(bigstep_x))
+		projlist=[]
+		projvalues=[]
+		for j in range(len(master_MOUS_list)):
+			tempx1=master_MOUS_list[j]['min_freq_GHz']
+			tempx2=master_MOUS_list[j]['max_freq_GHz']
+			if master_MOUS_list[j]['project_code'] not in projlist:
+				projlist.append(master_MOUS_list[j]['project_code'])
+				tempy=np.zeros(len(bigstep_x))
+				for jj in range(len(bigstep_x)):
+					if bigstep_x[jj]>tempx1 and bigstep_x[jj]<tempx2:
+						tempy[jj]=1
+				projvalues.append(tempy)
+			else:
+				projindex=projlist.index(master_MOUS_list[j]['project_code'])
+				tempy=projvalues[projindex]
+				for jj in range(len(bigstep_x)):
+					if bigstep_x[jj]>tempx1 and bigstep_x[jj]<tempx2:
+						tempy[jj]=1
+				projvalues[projindex]=tempy
+		for j in range(len(projlist)):
+			for jj in range(len(bigstep_x)):
+				bigstep_y[jj]+=projvalues[j][jj]
+		if projlist==[]:
+			for plt_i in [0,1]:
+				for plt_j in [0,1,2,3]:
+					axes[plt_i,plt_j].set_ylim(-0.1,1.1)
+		#Add lines
+		for j in range(len(lines)):
+			linefreq=lines[j][1]/(1+zred)
+			if getsubplotnum(linefreq)[0]!=-1:
+				axisnums=getsubplotnum(linefreq)
+				axes[axisnums[0],axisnums[1]].axvline(linefreq,linestyle='dashed')
+				xmin, xmax, ymin, ymax = plt.axis()
+				axes[axisnums[0],axisnums[1]].text(linefreq,(ymax-ymin)*0.5,lines[j][0],rotation=270,fontsize=8)
+		#Add band names
+		for j in range(8):
+			axisnums=getsubplotnum2(j)
+			axes[axisnums[0],axisnums[1]].plot(bigstep_x,bigstep_y,c='r')
+			axes[axisnums[0],axisnums[1]].set_xlim(almabands[j][1],almabands[j][2])
+			xpostext=axes[axisnums[0],axisnums[1]].get_xlim()[0]+0.05*abs(axes[axisnums[0],axisnums[1]].get_xlim()[0]-axes[axisnums[0],axisnums[1]].get_xlim()[1])
+			ypostext=axes[axisnums[0],axisnums[1]].get_ylim()[1]-0.09*abs(axes[axisnums[0],axisnums[1]].get_ylim()[0]-axes[axisnums[0],axisnums[1]].get_ylim()[1])
+			axes[axisnums[0],axisnums[1]].text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=1.0))
+			axes[axisnums[0],axisnums[1]].yaxis.get_major_locator().set_params(integer=True)
+		fig.add_subplot(111, frameon=False)
+		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+		plt.xlabel("Observed Frequency [GHz]",weight='bold')
+		plt.ylabel("Number of Projects",weight='bold')
+		plt.tight_layout(pad=3.0,w_pad=0.1,h_pad=0.1)
+		plt.savefig('LineSummary/LineSummary_'+name+'.png',dpi=300,bbox_inches='tight')
+		plt.close()
+
+	if make_spat_plots:
+		fig, axes = plt.subplots(1,1,figsize=(8,8))
+		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
+		plt.axvline(0,linestyle='dashed',color='k',alpha=0.5)
+		plt.axhline(0,linestyle='dashed',color='k',alpha=0.5)
+		numcolor=0;projlist=[];colorlist=[];lslist=[]
+		biggestr=40.
+		for j in range(len(master_MOUS_list)):
+			if master_MOUS_list[j]['project_code'] not in projlist:
+				temp_ra=master_MOUS_list[j]['RAJ2000']
+				temp_dec=master_MOUS_list[j]['DEJ2000']
+				D_RA=(temp_ra-RA)*3600.
+				D_DEC=(temp_dec-DEC)*3600.
+				axes.add_patch(plt.Circle((D_RA,D_DEC), master_MOUS_list[j]['ang_res_arcsec']/2., edgecolor=colorscheme[numcolor], alpha=0.8, fill=True, facecolor=colorscheme[numcolor]))
+				colorlist.append(colorscheme[numcolor])
+				if master_MOUS_list[j]['data_rights']=='Public':
+					axes.add_patch(plt.Circle((D_RA,D_DEC), master_MOUS_list[j]['FoV_arcsec']/2., edgecolor=colorscheme[numcolor], alpha=0.5, fill=False))
+					lslist.append('-')
+				else:
+					axes.add_patch(plt.Circle((D_RA,D_DEC), master_MOUS_list[j]['FoV_arcsec']/2., edgecolor=colorscheme[numcolor], alpha=0.5, fill=False, linestyle='dashed'))
+					lslist.append('dashed')
+				numcolor+=1
+				projlist.append(master_MOUS_list[j]['project_code'])
+				if (0.5*master_MOUS_list[j]['FoV_arcsec'])>biggestr:
+					biggestr=(0.5*master_MOUS_list[j]['FoV_arcsec'])+5.
+		plt.xlabel("Relative R.A. [\"]",weight='bold')
+		plt.ylabel("Relative Dec. [\"]",weight='bold')
+
+		plt.xlim(biggestr,-1.*biggestr)
+		plt.ylim(-1.*biggestr,biggestr)
+		indexproj=sortpl(projlist)
+		for j in indexproj:
+			axes.plot(-1E+100,-1E+100,marker='.',color=colorlist[j],label=projlist[j],linestyle=lslist[j])
+		plt.legend()
+		plt.savefig('FoV/FoV_'+name+'.png',dpi=300,bbox_inches='tight')
+		plt.close()
+
+	if make_tables:
+		table_txt.write(name+'\n')
+		table_txt.write('Line Project Ang_Res Int_Time Targ_Name\n')
+		for j in range(len(lines)):
+			linefreq=lines[j][1]/(1+zred)
+			for k in range(len(master_MOUS_list)):
+				tempx1=master_MOUS_list[k]['min_freq_GHz']
+				tempx2=master_MOUS_list[k]['max_freq_GHz']
+				if tempx1<linefreq and tempx2>linefreq:
+					templineline=lines[j][0]+' '
+					templineline+=str(master_MOUS_list[k]['project_code'])+' '
+					templineline+=str(master_MOUS_list[k]['ang_res_arcsec'])+' '
+					templineline+=str(master_MOUS_list[k]['t_exptime'])+' '
+					templineline+=str(master_MOUS_list[k]['ALMA_source_name'])+'\n'
+					table_txt.write(templineline)
+		table_txt.write('-----\n')
+
+	if make_line_plots:
+		fig, axes = plt.subplots(3,4,figsize=(12,10))
+		mlp=open('LineTable.txt','r')
+		mlpf=mlp.readlines()
+		line_lines=[-1,-1]
+		for mlp_i in range(len(mlpf)):
+			if mlpf[mlp_i].replace('\n','')==name:
+				line_lines[0]=mlp_i
+				for mlp_j in range(mlp_i,len(mlpf)):
+					if '----' in mlpf[mlp_j]:
+						line_lines[1]=mlp_j-1
+						break
+		linelist=[];numlines=0;L_INDEX=-1;bigvals=[]
+		projlist=[];P_INDEX=-1
+		if line_lines[1]-line_lines[0]!=1:
+			for mlp_i in range(line_lines[0]+2,line_lines[1]+1):
+				temp_mlp=mlpf[mlp_i].split(' ')
+				LN=temp_mlp[0]+' '+temp_mlp[1]
+				PR=str(temp_mlp[2]).replace('\n','')
+				AR=float(temp_mlp[3])
+				IT=float(temp_mlp[4])/3600.
+				if LN not in linelist:
+					linelist.append(LN)
+					numlines+=1
+					L_INDEX=numlines
+					bigvals.append([IT,AR])
+				else:
+					L_INDEX=linelist.index(LN)
+					if IT>bigvals[L_INDEX-1][0]:
+						bigvals[L_INDEX-1][0]=IT
+					if AR>bigvals[L_INDEX-1][1]:
+						bigvals[L_INDEX-1][1]=AR
+				if PR not in projlist:
+					projlist.append(PR)
+				PNUM=projlist.index(PR)
+				plot_index=getsubplotnum3(L_INDEX-1)
+				axes[plot_index[0],plot_index[1]].scatter([IT],[AR],marker='s',color=colorscheme[PNUM])
+		try:
+			for mlp_i in range(12):
+				plot_index=getsubplotnum3(mlp_i)
+				if mlp_i<len(linelist):
+					axes[plot_index[0],plot_index[1]].set_title(linelist[mlp_i],weight='bold')
+					axes[plot_index[0],plot_index[1]].set_xlim(0,1.1*bigvals[mlp_i][0])
+					axes[plot_index[0],plot_index[1]].set_ylim(0,1.1*bigvals[mlp_i][1])
+				else:
+					axes[plot_index[0],plot_index[1]].set_visible(False)
+		except TypeError:
+			pass
+		mlp.close()
+		fig.add_subplot(111, frameon=False)
+		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold',x=0.56)
+		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+		plt.xlabel("Integration Time [hr]",weight='bold')
+		plt.ylabel("Spatial Resolution [\"]",weight='bold')
+		indexproj=sortpl(projlist)
+		for PN_I in indexproj:
+			plt.plot([], [], marker='s', label=projlist[PN_I], color=colorscheme[PN_I], linestyle=None)
+		plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=4, fancybox=True, shadow=True, numpoints=1, handlelength=0)
+		plt.tight_layout(pad=5.0,w_pad=0.1,h_pad=0.3)
+		plt.savefig('LinePlots/LinePlot_'+name+'.png',dpi=300,bbox_inches='tight')
+		plt.close()
+
+
+
+f.close()
+if make_tables:
+	table_txt.close()
+
+
+
+
+
