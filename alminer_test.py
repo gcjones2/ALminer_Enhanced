@@ -108,13 +108,26 @@ def sortpl(projlist):
 	index_split=np.argsort(temp_pl)
 	return index_split
 
+#Gets rid of repeated entries for overlapping SPWs
+def spwoverlap(entry1,entry2):
+	same_proj=(entry1['project_code']==entry2['project_code'])
+	same_obj=(entry1['ALMA_source_name']==entry2['ALMA_source_name'])
+	same_ra=(entry1['RAJ2000']==entry2['RAJ2000'])
+	same_dec=(entry1['DEJ2000']==entry2['DEJ2000'])
+	same_AR=(entry1['ang_res_arcsec']==entry2['ang_res_arcsec'])
+	same_ET=(entry1['t_exptime']==entry2['t_exptime'])
+	if same_proj and same_obj and same_ra and same_dec and same_AR and same_ET:
+		return True
+	else:
+		return False
+
 #-------
 
 #What should we do?
-make_spec_plots=True
-make_spat_plots=True
+make_spec_plots=False
+make_spat_plots=False
 make_tables=False
-make_line_plots=False
+make_line_plots=True
 
 infile='IFS_Table.txt'
 f=open(infile,'r')
@@ -124,7 +137,7 @@ if make_tables:
 	table_txt=open('LineTable.txt','w');table_txt.close()
 	table_txt=open('LineTable.txt','w')
 
-for i in range(35,len(ff)):
+for i in range(len(ff)):
 
 	#Get RA and DEC of target
 	temp=ff[i].split(' ')
@@ -153,7 +166,7 @@ for i in range(35,len(ff)):
 	print('->',name)
 	myquery = alminer.conesearch(ra=RA, dec=DEC, search_radius=(30./60.), public=None)
 
-	#Get basic retails of each returned observation
+	#Get basic details of each returned observation
 	EXPLORATION=alminer.explore(myquery, allcols=True, allrows=True)
 
 	master_MOUS_list=[]
@@ -282,6 +295,7 @@ for i in range(35,len(ff)):
 	if make_tables:
 		table_txt.write(name+'\n')
 		table_txt.write('Line Project Ang_Res Int_Time Targ_Name\n')
+		table_line_list=[]
 		for j in range(len(lines)):
 			linefreq=lines[j][1]/(1+zred)
 			for k in range(len(master_MOUS_list)):
@@ -293,7 +307,10 @@ for i in range(35,len(ff)):
 					templineline+=str(master_MOUS_list[k]['ang_res_arcsec'])+' '
 					templineline+=str(master_MOUS_list[k]['t_exptime'])+' '
 					templineline+=str(master_MOUS_list[k]['ALMA_source_name'])+'\n'
-					table_txt.write(templineline)
+					if templineline not in table_line_list:
+						table_txt.write(templineline)
+						table_line_list.append(templineline)
+					
 		table_txt.write('-----\n')
 
 	if make_line_plots:
@@ -319,19 +336,19 @@ for i in range(35,len(ff)):
 				IT=float(temp_mlp[4])/3600.
 				if LN not in linelist:
 					linelist.append(LN)
-					numlines+=1
 					L_INDEX=numlines
+					numlines+=1
 					bigvals.append([IT,AR])
 				else:
 					L_INDEX=linelist.index(LN)
-					if IT>bigvals[L_INDEX-1][0]:
-						bigvals[L_INDEX-1][0]=IT
-					if AR>bigvals[L_INDEX-1][1]:
-						bigvals[L_INDEX-1][1]=AR
+					if IT>bigvals[L_INDEX][0]:
+						bigvals[L_INDEX][0]=IT
+					if AR>bigvals[L_INDEX][1]:
+						bigvals[L_INDEX][1]=AR
 				if PR not in projlist:
 					projlist.append(PR)
 				PNUM=projlist.index(PR)
-				plot_index=getsubplotnum3(L_INDEX-1)
+				plot_index=getsubplotnum3(L_INDEX)
 				axes[plot_index[0],plot_index[1]].scatter([IT],[AR],marker='s',color=colorscheme[PNUM])
 		try:
 			for mlp_i in range(12):
