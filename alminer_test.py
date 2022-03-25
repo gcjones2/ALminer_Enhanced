@@ -125,17 +125,58 @@ def spwoverlap(entry1,entry2):
 
 #What should we do?
 make_spec_plots=False
+make_cont_plots=False
 make_spat_plots=False
 make_tables=False
 make_line_plots=True
 
-infile='IFS_Table.txt'
+infile='INPUTS/IFS_Table.txt'
 f=open(infile,'r')
 ff=f.readlines()
 
+#Get atmospheric transmission
+atm_file='INPUTS/Atmosphere.txt'
+f_atm=open(atm_file,'r')
+ff_atm=f_atm.readlines()
+atm_data_3=[[],[]]
+atm_data_4=[[],[]]
+atm_data_5=[[],[]]
+atm_data_6=[[],[]]
+atm_data_7=[[],[]]
+atm_data_8=[[],[]]
+atm_data_9=[[],[]]
+atm_data_10=[[],[]]
+for i in range(5,len(ff_atm)):
+	atm_temp=ff_atm[i].split('  ')
+	if float(atm_temp[0])>=float(almabands[0][1]) and float(atm_temp[0])<=float(almabands[0][2]):
+		atm_data_3[0].append(float(atm_temp[0]))
+		atm_data_3[1].append(float(atm_temp[1].replace(' \n','')))
+	if float(atm_temp[0])>=float(almabands[1][1]) and float(atm_temp[0])<=float(almabands[1][2]):
+		atm_data_4[0].append(float(atm_temp[0]))
+		atm_data_4[1].append(float(atm_temp[1].replace(' \n','')))
+	if float(atm_temp[0])>=float(almabands[2][1]) and float(atm_temp[0])<=float(almabands[2][2]):
+		atm_data_5[0].append(float(atm_temp[0]))
+		atm_data_5[1].append(float(atm_temp[1].replace(' \n','')))
+	if float(atm_temp[0])>=float(almabands[3][1]) and float(atm_temp[0])<=float(almabands[3][2]):
+		atm_data_6[0].append(float(atm_temp[0]))
+		atm_data_6[1].append(float(atm_temp[1].replace(' \n','')))
+	if float(atm_temp[0])>=float(almabands[4][1]) and float(atm_temp[0])<=float(almabands[4][2]):
+		atm_data_7[0].append(float(atm_temp[0]))
+		atm_data_7[1].append(float(atm_temp[1].replace(' \n','')))
+	if float(atm_temp[0])>=float(almabands[5][1]) and float(atm_temp[0])<=float(almabands[5][2]):
+		atm_data_8[0].append(float(atm_temp[0]))
+		atm_data_8[1].append(float(atm_temp[1].replace(' \n','')))
+	if float(atm_temp[0])>=float(almabands[6][1]) and float(atm_temp[0])<=float(almabands[6][2]):
+		atm_data_9[0].append(float(atm_temp[0]))
+		atm_data_9[1].append(float(atm_temp[1].replace(' \n','')))
+	if float(atm_temp[0])>=float(almabands[7][1]) and float(atm_temp[0])<=float(almabands[7][2]):
+		atm_data_10[0].append(float(atm_temp[0]))
+		atm_data_10[1].append(float(atm_temp[1].replace(' \n','')))
+
+#Reset line table
 if make_tables:
-	table_txt=open('LineTable.txt','w');table_txt.close()
-	table_txt=open('LineTable.txt','w')
+	table_txt=open('OUTPUTS/LineTable.txt','w');table_txt.close()
+	table_txt=open('OUTPUTS/LineTable.txt','w')
 
 for i in range(len(ff)):
 
@@ -152,7 +193,7 @@ for i in range(len(ff)):
 
 	#Get lines
 	lines=[]
-	linefile='splatalogue_1.tsv'
+	linefile='INPUTS/splatalogue_1.tsv'
 	g=open(linefile)
 	gg=g.readlines()
 	for j in range(1,len(gg)):
@@ -194,13 +235,19 @@ for i in range(len(ff)):
 				temp_MOUS_list['FoV_arcsec']=EXPLORATION.loc[e_i]['FoV_arcsec'] 
 				temp_MOUS_list['data_rights']=EXPLORATION.loc[e_i]['data_rights'] 
 				temp_MOUS_list['t_exptime']=EXPLORATION.loc[e_i]['t_exptime'] 
+				temp_MOUS_list['central_freq_GHz']=EXPLORATION.loc[e_i]['central_freq_GHz'] 
+				temp_MOUS_list['cont_sens_bandwidth']=EXPLORATION.loc[e_i]['cont_sens_bandwidth'] 
 				master_MOUS_list.append(temp_MOUS_list)
 	except AttributeError:
 		pass
 				
+	#Make plots showing which lines fall into which band, and how many projects have observed each spectral range. Added in atmospheric transmission overlays.
 	if make_spec_plots:
+		linecolor='k'
+		atmcolor=colorscheme[4]
+		datacolor=colorscheme[5]
 		#Plot spectral coverage
-		fig, axes = plt.subplots(2,4,figsize=(10,8))
+		fig, axes = plt.subplots(2,4,figsize=(12,8))
 		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
 		bigstep_x=np.arange(84.0,950.0,0.1)
 		bigstep_y=np.zeros(len(bigstep_x))
@@ -235,25 +282,122 @@ for i in range(len(ff)):
 			linefreq=lines[j][1]/(1+zred)
 			if getsubplotnum(linefreq)[0]!=-1:
 				axisnums=getsubplotnum(linefreq)
-				axes[axisnums[0],axisnums[1]].axvline(linefreq,linestyle='dashed')
+				axes[axisnums[0],axisnums[1]].axvline(linefreq,linestyle='dashed',c=linecolor)
 				xmin, xmax, ymin, ymax = plt.axis()
 				axes[axisnums[0],axisnums[1]].text(linefreq,(ymax-ymin)*0.5,lines[j][0],rotation=270,fontsize=8)
 		#Add band names
 		for j in range(8):
 			axisnums=getsubplotnum2(j)
-			axes[axisnums[0],axisnums[1]].plot(bigstep_x,bigstep_y,c='r')
+			axes[axisnums[0],axisnums[1]].plot(bigstep_x,bigstep_y,c=datacolor)
+			axes[axisnums[0],axisnums[1]].set_ylim(0,max(bigstep_y)+1)
 			axes[axisnums[0],axisnums[1]].set_xlim(almabands[j][1],almabands[j][2])
 			xpostext=axes[axisnums[0],axisnums[1]].get_xlim()[0]+0.05*abs(axes[axisnums[0],axisnums[1]].get_xlim()[0]-axes[axisnums[0],axisnums[1]].get_xlim()[1])
 			ypostext=axes[axisnums[0],axisnums[1]].get_ylim()[1]-0.09*abs(axes[axisnums[0],axisnums[1]].get_ylim()[0]-axes[axisnums[0],axisnums[1]].get_ylim()[1])
-			axes[axisnums[0],axisnums[1]].text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=1.0))
+			axes[axisnums[0],axisnums[1]].text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=0.8))
 			axes[axisnums[0],axisnums[1]].yaxis.get_major_locator().set_params(integer=True)
-		fig.add_subplot(111, frameon=False)
+			#
+			ax2 = axes[axisnums[0],axisnums[1]].twinx()
+			ax2.tick_params(axis='y', labelcolor=atmcolor)
+			if j==0:
+				ax2.plot(atm_data_3[0],atm_data_3[1],c=atmcolor,alpha=0.8)
+			if j==1:
+				ax2.plot(atm_data_4[0],atm_data_4[1],c=atmcolor,alpha=0.8)
+			if j==2:
+				ax2.plot(atm_data_5[0],atm_data_5[1],c=atmcolor,alpha=0.8)
+			if j==3:
+				ax2.plot(atm_data_6[0],atm_data_6[1],c=atmcolor,alpha=0.8)
+			if j==4:
+				ax2.plot(atm_data_7[0],atm_data_7[1],c=atmcolor,alpha=0.8)
+			if j==5:
+				ax2.plot(atm_data_8[0],atm_data_8[1],c=atmcolor,alpha=0.8)
+			if j==6:
+				ax2.plot(atm_data_9[0],atm_data_9[1],c=atmcolor,alpha=0.8)
+			if j==7:
+				ax2.plot(atm_data_10[0],atm_data_10[1],c=atmcolor,alpha=0.8)
+			ax2.set_ylim(0.0,1.0)
+		ax1=fig.add_subplot(111, frameon=False)
 		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
 		plt.xlabel("Observed Frequency [GHz]",weight='bold')
-		plt.ylabel("Number of Projects",weight='bold')
+		plt.ylabel("Number of Projects",weight='bold',color=datacolor)
+		ax2 = fig.add_subplot(111, sharex=ax1, frameon=False)
+		ax2.yaxis.set_label_position("right")
+		plt.ylabel('Atmospheric Transmission', rotation=270,labelpad=50.0,color=atmcolor,weight='bold')
+		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
 		plt.tight_layout(pad=3.0,w_pad=0.1,h_pad=0.1)
-		plt.savefig('LineSummary/LineSummary_'+name+'.png',dpi=300,bbox_inches='tight')
+		#plt.show()
+		plt.savefig('OUTPUTS/SpecCoverage/SpecCoverage_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
+
+#
+	#Make plots showing continuum sensitivity in each band.
+	if make_cont_plots:
+		try:
+			atmcolor=colorscheme[4]
+			datacolor=colorscheme[5]
+			fig, axes = plt.subplots(2,4,figsize=(12,8))
+			fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
+			bigstep_all=[]
+			for j in range(len(master_MOUS_list)):	
+				Pp=master_MOUS_list[j]['project_code']
+				Ss=master_MOUS_list[j]['cont_sens_bandwidth']
+				Ff=master_MOUS_list[j]['central_freq_GHz']
+				added=False
+				for jj in range(len(bigstep_all)):
+					if Pp==bigstep_all[jj]['P'] and Ss==bigstep_all[jj]['S']:
+						bigstep_all[jj]['F'].append(Ff)
+						added=True
+				if not added:
+					bigstep_all.append({'P':Pp,'S':Ss,'F':[Ff]})
+			for j in range(8):
+				axisnums=getsubplotnum2(j)
+				max_S=-1
+				for jj in range(len(bigstep_all)):
+					axes[axisnums[0],axisnums[1]].plot(bigstep_all[jj]['F'],[bigstep_all[jj]['S'] for x in range(len(bigstep_all[jj]['F']))],c=datacolor,marker='v',linestyle='dashed')
+					if bigstep_all[jj]['S']>max_S:
+						max_S=bigstep_all[jj]['S']
+				axes[axisnums[0],axisnums[1]].set_ylim(0,max_S*1.3)
+				axes[axisnums[0],axisnums[1]].set_xlim(almabands[j][1],almabands[j][2])
+				xpostext=axes[axisnums[0],axisnums[1]].get_xlim()[0]+0.05*abs(axes[axisnums[0],axisnums[1]].get_xlim()[0]-axes[axisnums[0],axisnums[1]].get_xlim()[1])
+				ypostext=axes[axisnums[0],axisnums[1]].get_ylim()[1]-0.09*abs(axes[axisnums[0],axisnums[1]].get_ylim()[0]-axes[axisnums[0],axisnums[1]].get_ylim()[1])
+				axes[axisnums[0],axisnums[1]].text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=0.8))
+				axes[axisnums[0],axisnums[1]].yaxis.get_major_locator().set_params(integer=True)
+				#
+				ax2 = axes[axisnums[0],axisnums[1]].twinx()
+				ax2.tick_params(axis='y', labelcolor=atmcolor)
+				if j==0:
+					ax2.plot(atm_data_3[0],atm_data_3[1],c=atmcolor,alpha=0.8)
+				if j==1:
+					ax2.plot(atm_data_4[0],atm_data_4[1],c=atmcolor,alpha=0.8)
+				if j==2:
+					ax2.plot(atm_data_5[0],atm_data_5[1],c=atmcolor,alpha=0.8)
+				if j==3:
+					ax2.plot(atm_data_6[0],atm_data_6[1],c=atmcolor,alpha=0.8)
+				if j==4:
+					ax2.plot(atm_data_7[0],atm_data_7[1],c=atmcolor,alpha=0.8)
+				if j==5:
+					ax2.plot(atm_data_8[0],atm_data_8[1],c=atmcolor,alpha=0.8)
+				if j==6:
+					ax2.plot(atm_data_9[0],atm_data_9[1],c=atmcolor,alpha=0.8)
+				if j==7:
+					ax2.plot(atm_data_10[0],atm_data_10[1],c=atmcolor,alpha=0.8)
+				ax2.set_ylim(0.0,1.0)
+			ax1=fig.add_subplot(111, frameon=False)
+			plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+			plt.xlabel("Observed Frequency [GHz]",weight='bold')
+			plt.ylabel("Continuum Sensitivity [uJy/beam]",weight='bold',color=datacolor)
+			ax2 = fig.add_subplot(111, sharex=ax1, frameon=False)
+			ax2.yaxis.set_label_position("right")
+			plt.ylabel('Atmospheric Transmission', rotation=270,labelpad=50.0,color=atmcolor,weight='bold')
+			plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+			plt.tight_layout(pad=3.0,w_pad=0.1,h_pad=0.1)
+			#plt.show()
+			plt.savefig('OUTPUTS/ContCoverage/ContCoverage_'+name+'.png',dpi=300,bbox_inches='tight')
+			plt.close()
+		except ValueError:
+			print('No Continuum')
+#
+
+
 
 	if make_spat_plots:
 		fig, axes = plt.subplots(1,1,figsize=(8,8))
@@ -289,7 +433,7 @@ for i in range(len(ff)):
 		for j in indexproj:
 			axes.plot(-1E+100,-1E+100,marker='.',color=colorlist[j],label=projlist[j],linestyle=lslist[j])
 		plt.legend()
-		plt.savefig('FoV/FoV_'+name+'.png',dpi=300,bbox_inches='tight')
+		plt.savefig('OUTPUTS/FoV/FoV_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
 
 	if make_tables:
@@ -315,7 +459,7 @@ for i in range(len(ff)):
 
 	if make_line_plots:
 		fig, axes = plt.subplots(3,4,figsize=(12,10))
-		mlp=open('LineTable.txt','r')
+		mlp=open('OUTPUTS/LineTable.txt','r')
 		mlpf=mlp.readlines()
 		line_lines=[-1,-1]
 		for mlp_i in range(len(mlpf)):
@@ -372,7 +516,7 @@ for i in range(len(ff)):
 			plt.plot([], [], marker='s', label=projlist[PN_I], color=colorscheme[PN_I], linestyle=None)
 		plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=4, fancybox=True, shadow=True, numpoints=1, handlelength=0)
 		plt.tight_layout(pad=5.0,w_pad=0.1,h_pad=0.3)
-		plt.savefig('LinePlots/LinePlot_'+name+'.png',dpi=300,bbox_inches='tight')
+		plt.savefig('OUTPUTS/LinePlots/LinePlot_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
 
 
