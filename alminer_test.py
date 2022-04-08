@@ -1,5 +1,6 @@
 '''
 conda activate py36
+cd /Volumes/RobDec2020/ALMiner
 python alminer_test.py 
 '''
 
