@@ -8,3 +8,7 @@ Used ALminer to query ALMA archive given RA and DEC.
 -Also include table of line detections [LineTable.txt]
 
 (Gareth Jones - 25 March, 2022 - gareth.jones@physics.ox.ac.uk)
+
+~~~~
+
+April 8: Corrected J0100 position.
