@@ -1,10 +1,7 @@
 '''
 cd /Users/garethjones/Desktop/ALminer_Enhanced
 conda activate py39
-python alminer_test_MOUS.py 
-
-Dec7,2022: Added MOUS to linelist output
-
+python alminer_test_V2.py 
 '''
 
 
@@ -136,21 +133,16 @@ def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,linestyle='-'):
 				
 #-------
 
-##
 #What should we do?
-make_spec_plots=False
-make_cont_plots=False
-make_spat_plots=False
-make_tables=False
-
-#Must be run after make_tables
+make_spec_plots=True
+make_cont_plots=True
+make_spat_plots=True
+make_tables=True
 make_line_plots=True
-
-#Not fully implemented...
-download_products=False
-##
+download_products=True
 
 infile='INPUTS/IFS_Table.txt'
+#infile='INPUTS/heh.txt'
 f=open(infile,'r')
 ff=f.readlines()
 
@@ -223,6 +215,7 @@ for i in range(len(ff)):
 		lines.append([templine_name,templine_freq])
 	g.close()
 
+
 	#Make sure the object directory exists
 	try:
 		os.mkdir('OUTPUTS/'+name)
@@ -231,7 +224,7 @@ for i in range(len(ff)):
 
 	#Query ALMA archive for RA, DEC
 	print('->',name)
-	myquery = alminer.conesearch(ra=RA, dec=DEC, search_radius=(60./60.), public=None, point=False)
+	myquery = alminer.conesearch(ra=RA, dec=DEC, public=None, point=True)
 
 	#Get basic details of each returned observation
 	EXPLORATION=alminer.explore(myquery, allcols=True, allrows=True)
@@ -239,16 +232,16 @@ for i in range(len(ff)):
 	master_MOUS_list=[]
 	try:
 		for e_i in EXPLORATION.index:
-			#Only get data for projects where target is in FoV
-			infov=False
-			RA0=RA*(np.pi/180.)
-			DEC0=DEC*(np.pi/180.)
-			RA1=EXPLORATION.loc[e_i]['RAJ2000']*(np.pi/180.)
-			DEC1=EXPLORATION.loc[e_i]['DEJ2000']*(np.pi/180.)
-			#temp_DEL=np.sin(DEC0)*np.sin(DEC1) + np.cos(DEC0)*np.cos(DEC1)*np.cos(RA0 - RA1)
-			#DEL=np.arccos(temp_DEL)*(180./np.pi)*3600.
-			DEL=np.sqrt((RA0-RA1)**2+(DEC0-DEC1)**2)*(180./np.pi)*3600.
-			if DEL<(0.5*EXPLORATION.loc[e_i]['FoV_arcsec']):
+			#Only get data for projects that aren't mosaics
+			if EXPLORATION.loc[e_i]['is_mosaic']=='F':
+				#print(EXPLORATION.loc[e_i])
+				RA0=RA*(np.pi/180.)
+				DEC0=DEC*(np.pi/180.)
+				RA1=EXPLORATION.loc[e_i]['RAJ2000']*(np.pi/180.)
+				DEC1=EXPLORATION.loc[e_i]['DEJ2000']*(np.pi/180.)
+				#temp_DEL=np.sin(DEC0)*np.sin(DEC1) + np.cos(DEC0)*np.cos(DEC1)*np.cos(RA0 - RA1)
+				#DEL=np.arccos(temp_DEL)*(180./np.pi)*3600.
+				DEL=np.sqrt((RA0-RA1)**2+(DEC0-DEC1)**2)*(180./np.pi)*3600.
 				temp_MOUS_list={}
 				temp_MOUS_list['project_code']=EXPLORATION.loc[e_i]['project_code']
 				temp_MOUS_list['ALMA_source_name']=EXPLORATION.loc[e_i]['ALMA_source_name']
@@ -263,7 +256,6 @@ for i in range(len(ff)):
 				temp_MOUS_list['t_exptime']=EXPLORATION.loc[e_i]['t_exptime'] 
 				temp_MOUS_list['central_freq_GHz']=EXPLORATION.loc[e_i]['central_freq_GHz'] 
 				temp_MOUS_list['cont_sens_bandwidth']=EXPLORATION.loc[e_i]['cont_sens_bandwidth'] 
-				temp_MOUS_list['MOUS_id']=EXPLORATION.loc[e_i]['MOUS_id']
 				master_MOUS_list.append(temp_MOUS_list)
 	except AttributeError:
 		pass
@@ -352,7 +344,7 @@ for i in range(len(ff)):
 		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
 		plt.tight_layout(pad=3.0,w_pad=0.1,h_pad=0.1)
 		#plt.show()
-		plt.savefig('OUTPUTS/'+name+'/SpecCoverage_'+name+'.pdf',dpi=300,bbox_inches='tight')
+		plt.savefig('OUTPUTS/'+name+'/SpecCoverage_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
 
 #
@@ -418,11 +410,14 @@ for i in range(len(ff)):
 			plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
 			plt.tight_layout(pad=3.0,w_pad=0.1,h_pad=0.1)
 			#plt.show()
-			plt.savefig('OUTPUTS/'+name+'/ContCoverage_'+name+'.pdf',dpi=300,bbox_inches='tight')
+			plt.savefig('OUTPUTS/'+name+'/ContCoverage_'+name+'.png',dpi=300,bbox_inches='tight')
 			plt.close()
 		except ValueError:
 			print('No Continuum')
 #
+
+
+
 	if make_spat_plots:
 		fig, axes = plt.subplots(1,1,figsize=(8,8))
 		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
@@ -457,12 +452,12 @@ for i in range(len(ff)):
 		for j in indexproj:
 			axes.plot(-1E+100,-1E+100,marker='.',color=colorlist[j],label=projlist[j],linestyle=lslist[j])
 		plt.legend()
-		plt.savefig('OUTPUTS/'+name+'/FoV_'+name+'.pdf',dpi=300,bbox_inches='tight')
+		plt.savefig('OUTPUTS/'+name+'/FoV_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
 
 	if make_tables:
 		table_txt.write(name+'\n')
-		table_txt.write('Line Project MOUS Ang_Res Int_Time Targ_Name\n')
+		table_txt.write('Line Project Ang_Res Int_Time Targ_Name\n')
 		table_line_list=[]
 		for j in range(len(lines)):
 			linefreq=lines[j][1]/(1+zred)
@@ -472,7 +467,6 @@ for i in range(len(ff)):
 				if tempx1<linefreq and tempx2>linefreq:
 					templineline=lines[j][0]+' '
 					templineline+=str(master_MOUS_list[k]['project_code'])+' '
-					templineline+=str(master_MOUS_list[k]['MOUS_id'])+' '
 					templineline+=str(master_MOUS_list[k]['ang_res_arcsec'])+' '
 					templineline+=str(master_MOUS_list[k]['t_exptime'])+' '
 					templineline+=str(master_MOUS_list[k]['ALMA_source_name'])+'\n'
@@ -501,8 +495,8 @@ for i in range(len(ff)):
 				temp_mlp=mlpf[mlp_i].split(' ')
 				LN=temp_mlp[0]+' '+temp_mlp[1]
 				PR=str(temp_mlp[2]).replace('\n','')
-				AR=float(temp_mlp[4])
-				IT=float(temp_mlp[5])/3600.
+				AR=float(temp_mlp[3])
+				IT=float(temp_mlp[4])/3600.
 				if LN not in linelist:
 					linelist.append(LN)
 					L_INDEX=numlines
@@ -541,7 +535,7 @@ for i in range(len(ff)):
 			plt.plot([], [], marker='s', label=projlist[PN_I], color=colorscheme[PN_I], linestyle=None)
 		plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=4, fancybox=True, shadow=True, numpoints=1, handlelength=0)
 		plt.tight_layout(pad=5.0,w_pad=0.1,h_pad=0.3)
-		plt.savefig('OUTPUTS/'+name+'/LinePlot_'+name+'.pdf',dpi=300,bbox_inches='tight')
+		plt.savefig('OUTPUTS/'+name+'/LinePlot_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
 
 
@@ -582,3 +576,8 @@ for i in range(len(ff)):
 f.close()
 if make_tables:
 	table_txt.close()
+
+
+
+
+
