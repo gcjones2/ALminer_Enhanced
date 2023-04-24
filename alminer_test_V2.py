@@ -4,6 +4,16 @@ conda activate py39
 python alminer_test_V2.py 
 '''
 
+#What should we do?
+make_spec_plots=True
+make_cont_plots=True
+make_spat_plots=True
+make_tables=True
+make_line_plots=True
+download_products=False
+infile='INPUTS/IFS_Table.txt'
+
+#------------------------
 
 import alminer
 import pandas
@@ -17,7 +27,7 @@ import astropy.io.fits as fits
 import astropy.wcs as wcs
 
 fs=13; fs2=25
-font = {'family' : 'normal','weight' : 'bold','size' : fs}
+font = {'family' : 'sans-serif','weight' : 'bold','size' : fs}
 matplotlib.rc('font', **font)
 
 almabands=[]
@@ -133,16 +143,6 @@ def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,linestyle='-'):
 				
 #-------
 
-#What should we do?
-make_spec_plots=True
-make_cont_plots=True
-make_spat_plots=True
-make_tables=True
-make_line_plots=True
-download_products=True
-
-infile='INPUTS/IFS_Table.txt'
-#infile='INPUTS/heh.txt'
 f=open(infile,'r')
 ff=f.readlines()
 
@@ -187,8 +187,11 @@ for i in range(5,len(ff_atm)):
 
 #Reset line table
 if make_tables:
-	table_txt=open('OUTPUTS/LineTable.txt','w');table_txt.close()
-	table_txt=open('OUTPUTS/LineTable.txt','w')
+	line_table_txt=open('OUTPUTS/LineTable.txt','w');line_table_txt.close()
+	#
+	cont_table_txt=open('OUTPUTS/ContTable.txt','w');cont_table_txt.close()
+	#
+	mous_table_txt=open('OUTPUTS/MOUSTable.txt','w');mous_table_txt.close()
 
 for i in range(len(ff)):
 
@@ -224,7 +227,7 @@ for i in range(len(ff)):
 
 	#Query ALMA archive for RA, DEC
 	print('->',name)
-	myquery = alminer.conesearch(ra=RA, dec=DEC, public=None, point=True)
+	myquery = alminer.conesearch(ra=RA, dec=DEC, public=True, point=True, tap_service='NRAO',print_query=True)
 
 	#Get basic details of each returned observation
 	EXPLORATION=alminer.explore(myquery, allcols=True, allrows=True)
@@ -234,14 +237,13 @@ for i in range(len(ff)):
 		for e_i in EXPLORATION.index:
 			#Only get data for projects that aren't mosaics
 			if EXPLORATION.loc[e_i]['is_mosaic']=='F':
-				#print(EXPLORATION.loc[e_i])
 				RA0=RA*(np.pi/180.)
 				DEC0=DEC*(np.pi/180.)
 				RA1=EXPLORATION.loc[e_i]['RAJ2000']*(np.pi/180.)
 				DEC1=EXPLORATION.loc[e_i]['DEJ2000']*(np.pi/180.)
-				#temp_DEL=np.sin(DEC0)*np.sin(DEC1) + np.cos(DEC0)*np.cos(DEC1)*np.cos(RA0 - RA1)
-				#DEL=np.arccos(temp_DEL)*(180./np.pi)*3600.
-				DEL=np.sqrt((RA0-RA1)**2+(DEC0-DEC1)**2)*(180./np.pi)*3600.
+				temp_DEL=np.sin(DEC0)*np.sin(DEC1) + np.cos(DEC0)*np.cos(DEC1)*np.cos(RA0 - RA1)
+				DEL=np.arccos(temp_DEL)*(180./np.pi)*3600.
+				#DEL=np.sqrt((RA0-RA1)**2+(DEC0-DEC1)**2)*(180./np.pi)*3600.
 				temp_MOUS_list={}
 				temp_MOUS_list['project_code']=EXPLORATION.loc[e_i]['project_code']
 				temp_MOUS_list['ALMA_source_name']=EXPLORATION.loc[e_i]['ALMA_source_name']
@@ -256,10 +258,11 @@ for i in range(len(ff)):
 				temp_MOUS_list['t_exptime']=EXPLORATION.loc[e_i]['t_exptime'] 
 				temp_MOUS_list['central_freq_GHz']=EXPLORATION.loc[e_i]['central_freq_GHz'] 
 				temp_MOUS_list['cont_sens_bandwidth']=EXPLORATION.loc[e_i]['cont_sens_bandwidth'] 
+				temp_MOUS_list['member_ous_uid']=EXPLORATION.loc[e_i]['member_ous_uid']
 				master_MOUS_list.append(temp_MOUS_list)
 	except AttributeError:
 		pass
-				
+		
 	#Make plots showing which lines fall into which band, and how many projects have observed each spectral range. Added in atmospheric transmission overlays.
 	if make_spec_plots:
 		linecolor='k'
@@ -347,7 +350,6 @@ for i in range(len(ff)):
 		plt.savefig('OUTPUTS/'+name+'/SpecCoverage_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
 
-#
 	#Make plots showing continuum sensitivity in each band.
 	if make_cont_plots:
 		try:
@@ -414,9 +416,6 @@ for i in range(len(ff)):
 			plt.close()
 		except ValueError:
 			print('No Continuum')
-#
-
-
 
 	if make_spat_plots:
 		fig, axes = plt.subplots(1,1,figsize=(8,8))
@@ -456,8 +455,9 @@ for i in range(len(ff)):
 		plt.close()
 
 	if make_tables:
-		table_txt.write(name+'\n')
-		table_txt.write('Line Project Ang_Res Int_Time Targ_Name\n')
+		line_table_txt=open('OUTPUTS/LineTable.txt','a')
+		line_table_txt.write(name+'\n')
+		line_table_txt.write('Line Project Ang_Res Int_Time Targ_Name\n')
 		table_line_list=[]
 		for j in range(len(lines)):
 			linefreq=lines[j][1]/(1+zred)
@@ -471,11 +471,42 @@ for i in range(len(ff)):
 					templineline+=str(master_MOUS_list[k]['t_exptime'])+' '
 					templineline+=str(master_MOUS_list[k]['ALMA_source_name'])+'\n'
 					if templineline not in table_line_list:
-						table_txt.write(templineline)
+						line_table_txt.write(templineline)
 						table_line_list.append(templineline)
-					
-		table_txt.write('-----\n')
-
+		line_table_txt.write('-----\n')
+		line_table_txt.close()
+		#
+		big_cont_list=[]
+		for k in range(len(master_MOUS_list)):
+			temp_cont={'freq':[float(master_MOUS_list[k]['central_freq_GHz'])], 'proj':str(master_MOUS_list[k]['project_code']), 'angres':str(master_MOUS_list[k]['ang_res_arcsec']), 'texp':str(master_MOUS_list[k]['t_exptime']), 'MOUS':str(master_MOUS_list[k]['member_ous_uid']), 'sourcename':str(master_MOUS_list[k]['ALMA_source_name'])}
+			absorbed=False
+			for ik in range(len(big_cont_list)):
+				if big_cont_list[ik]['proj']==temp_cont['proj'] and big_cont_list[ik]['MOUS']==temp_cont['MOUS']:
+					big_cont_list[ik]['freq'].append(temp_cont['freq'][0])
+					absorbed=True
+			if not absorbed:
+				big_cont_list.append(temp_cont)
+		cont_table_txt=open('OUTPUTS/ContTable.txt','a')
+		cont_table_txt.write(name+'\n')
+		cont_table_txt.write('Freq Project Ang_Res Int_Time Targ_Name Tunings MOUS\n')
+		for k in range(len(big_cont_list)):
+			tempcont=str(round(np.mean(big_cont_list[k]['freq']),3))+' '
+			tempcont+=str(big_cont_list[k]['proj'])+' '
+			tempcont+=str(big_cont_list[k]['angres'])+' '
+			tempcont+=str(big_cont_list[k]['texp'])+' '
+			tempcont+=str(big_cont_list[k]['sourcename'])+' '
+			tempcont+=str(int(len(big_cont_list[k]['freq'])/4))+' '
+			tempcont+=str(big_cont_list[k]['MOUS'])+'\n'
+			cont_table_txt.write(tempcont)
+		cont_table_txt.write('-----\n')
+		cont_table_txt.close()
+		#
+		mous_table_txt=open('OUTPUTS/MOUSTable.txt','a')
+		for k in range(len(master_MOUS_list)):
+			mous_table_txt.write(str(master_MOUS_list[k]['member_ous_uid'])+'\n')
+		mous_table_txt.write('-----\n')
+		mous_table_txt.close()
+		
 	if make_line_plots:
 		fig, axes = plt.subplots(3,4,figsize=(12,10))
 		mlp=open('OUTPUTS/LineTable.txt','r')
@@ -538,7 +569,6 @@ for i in range(len(ff)):
 		plt.savefig('OUTPUTS/'+name+'/LinePlot_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
 
-
 	if download_products:
 		#Make sure the data directory exists
 		try:
@@ -571,13 +601,5 @@ for i in range(len(ff)):
 					print(wcs.all_pix2world())
 				'''
 
-
-
 f.close()
-if make_tables:
-	table_txt.close()
-
-
-
-
 

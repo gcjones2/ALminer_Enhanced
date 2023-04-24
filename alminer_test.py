@@ -1,10 +1,15 @@
 '''
 cd /Users/garethjones/Desktop/ALminer_Enhanced
 conda activate py39
-python alminer_test_MOUS.py 
+python alminer_test.py 
 
 Dec7,2022: Added MOUS to linelist output
 
+=======
+conda activate py36
+cd /Volumes/RobDec2020/ALMiner
+python alminer_test.py 
+>>>>>>> 52a20b65e2df3a32e3d4cf9e322b93ac0d17217d
 '''
 
 
@@ -138,19 +143,20 @@ def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,linestyle='-'):
 
 ##
 #What should we do?
-make_spec_plots=False
-make_cont_plots=False
-make_spat_plots=False
+make_spec_plots=True
+make_cont_plots=True
+make_spat_plots=True
 make_tables=False
 
 #Must be run after make_tables
-make_line_plots=True
+make_line_plots=False
 
 #Not fully implemented...
 download_products=False
 ##
 
-infile='INPUTS/IFS_Table.txt'
+#infile='INPUTS/IFS_Table.txt'
+infile='INPUTS/JADES_Table.txt'
 f=open(infile,'r')
 ff=f.readlines()
 
