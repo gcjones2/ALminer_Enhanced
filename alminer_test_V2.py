@@ -4,6 +4,7 @@ conda activate py39
 python alminer_test_V2.py 
 '''
 
+<<<<<<< HEAD
 #What should we do?
 make_spec_plots=True
 make_cont_plots=True
@@ -14,6 +15,8 @@ download_products=False
 infile='INPUTS/IFS_Table.txt'
 
 #------------------------
+=======
+>>>>>>> 7c4f3a013c3280e28f5e6da3065c0828fd23d6a3
 
 import alminer
 import pandas
@@ -143,6 +146,19 @@ def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,linestyle='-'):
 				
 #-------
 
+<<<<<<< HEAD
+=======
+#What should we do?
+make_spec_plots=True
+make_cont_plots=True
+make_spat_plots=True
+make_tables=True
+make_line_plots=True
+download_products=False
+
+infile='INPUTS/IFS_Table.txt'
+#infile='INPUTS/heh.txt'
+>>>>>>> 7c4f3a013c3280e28f5e6da3065c0828fd23d6a3
 f=open(infile,'r')
 ff=f.readlines()
 
