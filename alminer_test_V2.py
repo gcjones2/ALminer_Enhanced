@@ -4,7 +4,6 @@ conda activate py39
 python alminer_test_V2.py 
 '''
 
-<<<<<<< HEAD
 #What should we do?
 make_spec_plots=True
 make_cont_plots=True
@@ -13,10 +12,10 @@ make_tables=True
 make_line_plots=True
 download_products=False
 infile='INPUTS/IFS_Table.txt'
+#infile='INPUTS/lester.txt'
+#infile='INPUTS/JADES_in.txt'
 
 #------------------------
-=======
->>>>>>> 7c4f3a013c3280e28f5e6da3065c0828fd23d6a3
 
 import alminer
 import pandas
@@ -28,6 +27,8 @@ import os
 import tarfile
 import astropy.io.fits as fits
 import astropy.wcs as wcs
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 fs=13; fs2=25
 font = {'family' : 'sans-serif','weight' : 'bold','size' : fs}
@@ -126,6 +127,14 @@ def sortpl(projlist):
 	index_split=np.argsort(temp_pl)
 	return index_split
 
+#Returns sorted list
+def sortpl2(projlist):
+	sorted_ind = sortpl(projlist)
+	temp_list=[]
+	for spli in range(len(sorted_ind)):
+		temp_list.append(projlist[sorted_ind[spli]])
+	return temp_list
+
 #Gets rid of repeated entries for overlapping SPWs
 def spwoverlap(entry1,entry2):
 	same_proj=(entry1['project_code']==entry2['project_code'])
@@ -140,25 +149,14 @@ def spwoverlap(entry1,entry2):
 		return False
 
 #Plot circle
-#Circle ICRS 53.157917 -27.773611 0.007827
-def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,linestyle='-'):
-	axes.add_patch(plt.Circle((RA_C,DEC_C), RAD_C, edgecolor=colorscheme[numcolor], alpha=0.8, fill=FILL_C, facecolor=colorscheme[numcolor],linestyle=linestyle))
-				
+def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,color,linestyle='-'):
+	if FILL_C:
+		axes.add_patch(plt.Circle((RA_C,DEC_C), RAD_C, edgecolor=color, alpha=0.1, fill=FILL_C, facecolor=color,linestyle=linestyle))
+	else:
+		axes.add_patch(plt.Circle((RA_C,DEC_C), RAD_C, edgecolor=color, alpha=1.0, fill=FILL_C, facecolor=color,linestyle=linestyle))
+
 #-------
 
-<<<<<<< HEAD
-=======
-#What should we do?
-make_spec_plots=True
-make_cont_plots=True
-make_spat_plots=True
-make_tables=True
-make_line_plots=True
-download_products=False
-
-infile='INPUTS/IFS_Table.txt'
-#infile='INPUTS/heh.txt'
->>>>>>> 7c4f3a013c3280e28f5e6da3065c0828fd23d6a3
 f=open(infile,'r')
 ff=f.readlines()
 
@@ -234,7 +232,6 @@ for i in range(len(ff)):
 		lines.append([templine_name,templine_freq])
 	g.close()
 
-
 	#Make sure the object directory exists
 	try:
 		os.mkdir('OUTPUTS/'+name)
@@ -243,7 +240,7 @@ for i in range(len(ff)):
 
 	#Query ALMA archive for RA, DEC
 	print('->',name)
-	myquery = alminer.conesearch(ra=RA, dec=DEC, public=True, point=True, tap_service='NRAO',print_query=True)
+	myquery = alminer.conesearch(ra=RA, dec=DEC, public=True, point=False, tap_service='NRAO', print_query=False, search_radius=2.0)
 
 	#Get basic details of each returned observation
 	EXPLORATION=alminer.explore(myquery, allcols=True, allrows=True)
@@ -253,29 +250,30 @@ for i in range(len(ff)):
 		for e_i in EXPLORATION.index:
 			#Only get data for projects that aren't mosaics
 			if EXPLORATION.loc[e_i]['is_mosaic']=='F':
-				RA0=RA*(np.pi/180.)
-				DEC0=DEC*(np.pi/180.)
-				RA1=EXPLORATION.loc[e_i]['RAJ2000']*(np.pi/180.)
-				DEC1=EXPLORATION.loc[e_i]['DEJ2000']*(np.pi/180.)
-				temp_DEL=np.sin(DEC0)*np.sin(DEC1) + np.cos(DEC0)*np.cos(DEC1)*np.cos(RA0 - RA1)
-				DEL=np.arccos(temp_DEL)*(180./np.pi)*3600.
-				#DEL=np.sqrt((RA0-RA1)**2+(DEC0-DEC1)**2)*(180./np.pi)*3600.
-				temp_MOUS_list={}
-				temp_MOUS_list['project_code']=EXPLORATION.loc[e_i]['project_code']
-				temp_MOUS_list['ALMA_source_name']=EXPLORATION.loc[e_i]['ALMA_source_name']
-				temp_MOUS_list['RAJ2000']=EXPLORATION.loc[e_i]['RAJ2000']
-				temp_MOUS_list['DEJ2000']=EXPLORATION.loc[e_i]['DEJ2000']
-				temp_MOUS_list['ang_res_arcsec']=EXPLORATION.loc[e_i]['ang_res_arcsec']
-				temp_MOUS_list['min_freq_GHz']=EXPLORATION.loc[e_i]['min_freq_GHz']
-				temp_MOUS_list['max_freq_GHz']=EXPLORATION.loc[e_i]['max_freq_GHz']
-				temp_MOUS_list['freq_res_kHz']=EXPLORATION.loc[e_i]['freq_res_kHz']
-				temp_MOUS_list['FoV_arcsec']=EXPLORATION.loc[e_i]['FoV_arcsec'] 
-				temp_MOUS_list['data_rights']=EXPLORATION.loc[e_i]['data_rights'] 
-				temp_MOUS_list['t_exptime']=EXPLORATION.loc[e_i]['t_exptime'] 
-				temp_MOUS_list['central_freq_GHz']=EXPLORATION.loc[e_i]['central_freq_GHz'] 
-				temp_MOUS_list['cont_sens_bandwidth']=EXPLORATION.loc[e_i]['cont_sens_bandwidth'] 
-				temp_MOUS_list['member_ous_uid']=EXPLORATION.loc[e_i]['member_ous_uid']
-				master_MOUS_list.append(temp_MOUS_list)
+				C0 = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree)
+				C1 = SkyCoord(ra=EXPLORATION.loc[e_i]['RAJ2000']*u.degree, dec=EXPLORATION.loc[e_i]['DEJ2000']*u.degree)
+				DEL=C0.separation(C1).arcsecond
+				if DEL<0.5*EXPLORATION.loc[e_i]['FoV_arcsec'] :
+					print(EXPLORATION.loc[e_i])
+					#print('Good -            ',EXPLORATION.loc[e_i]['project_code'],EXPLORATION.loc[e_i]['RAJ2000'],EXPLORATION.loc[e_i]['DEJ2000'])
+					temp_MOUS_list={}
+					temp_MOUS_list['project_code']=EXPLORATION.loc[e_i]['project_code']
+					temp_MOUS_list['ALMA_source_name']=EXPLORATION.loc[e_i]['ALMA_source_name']
+					temp_MOUS_list['RAJ2000']=EXPLORATION.loc[e_i]['RAJ2000']
+					temp_MOUS_list['DEJ2000']=EXPLORATION.loc[e_i]['DEJ2000']
+					temp_MOUS_list['ang_res_arcsec']=EXPLORATION.loc[e_i]['ang_res_arcsec']
+					temp_MOUS_list['min_freq_GHz']=EXPLORATION.loc[e_i]['min_freq_GHz']
+					temp_MOUS_list['max_freq_GHz']=EXPLORATION.loc[e_i]['max_freq_GHz']
+					temp_MOUS_list['freq_res_kHz']=EXPLORATION.loc[e_i]['freq_res_kHz']
+					temp_MOUS_list['FoV_arcsec']=EXPLORATION.loc[e_i]['FoV_arcsec'] 
+					temp_MOUS_list['data_rights']=EXPLORATION.loc[e_i]['data_rights'] 
+					temp_MOUS_list['t_exptime']=EXPLORATION.loc[e_i]['t_exptime'] 
+					temp_MOUS_list['central_freq_GHz']=EXPLORATION.loc[e_i]['central_freq_GHz'] 
+					temp_MOUS_list['cont_sens_bandwidth']=EXPLORATION.loc[e_i]['cont_sens_bandwidth'] 
+					temp_MOUS_list['member_ous_uid']=EXPLORATION.loc[e_i]['member_ous_uid']
+					master_MOUS_list.append(temp_MOUS_list)
+				else:
+					pass#print('Too far!',EXPLORATION.loc[e_i]['project_code'])
 	except AttributeError:
 		pass
 		
@@ -438,26 +436,35 @@ for i in range(len(ff)):
 		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
 		plt.axvline(0,linestyle='dashed',color='k',alpha=0.5)
 		plt.axhline(0,linestyle='dashed',color='k',alpha=0.5)
-		numcolor=0;projlist=[];colorlist=[];lslist=[]
+		projlist=[];lslist=[]
 		biggestr=40.
 		for j in range(len(master_MOUS_list)):
 			if master_MOUS_list[j]['project_code'] not in projlist:
-				temp_ra=master_MOUS_list[j]['RAJ2000']
-				temp_dec=master_MOUS_list[j]['DEJ2000']
-				D_RA=(temp_ra-RA)*3600.
-				D_DEC=(temp_dec-DEC)*3600.
-				plotCircle(D_RA,D_DEC,master_MOUS_list[j]['ang_res_arcsec']/2.,True)
-				colorlist.append(colorscheme[numcolor])
-				if master_MOUS_list[j]['data_rights']=='Public':
-					plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False)
-					lslist.append('-')
-				else:
-					plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False,linestyle='dashed')
-					lslist.append('dashed')
-				numcolor+=1
 				projlist.append(master_MOUS_list[j]['project_code'])
-				if (0.5*master_MOUS_list[j]['FoV_arcsec'])>biggestr:
-					biggestr=(0.5*master_MOUS_list[j]['FoV_arcsec'])+5.
+			color = colorscheme[projlist.index(master_MOUS_list[j]['project_code'])]
+			C_Origin = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree)
+			C_DelRA  = SkyCoord(ra=master_MOUS_list[j]['RAJ2000']*u.degree, dec=DEC*u.degree)
+			C_DelDe  = SkyCoord(ra=RA*u.degree, dec=master_MOUS_list[j]['DEJ2000']*u.degree)
+			if RA<master_MOUS_list[j]['RAJ2000']:
+				D_RA = C_DelRA.separation(C_Origin).arcsecond
+			else:
+				D_RA = -1.*C_DelRA.separation(C_Origin).arcsecond		
+			if DEC<master_MOUS_list[j]['DEJ2000']:
+				D_DEC = C_Origin.separation(C_DelDe).arcsecond
+			else:
+				D_DEC = -1.*C_Origin.separation(C_DelDe).arcsecond
+
+			plotCircle(D_RA,D_DEC,master_MOUS_list[j]['ang_res_arcsec']/2.,True,color)
+			if master_MOUS_list[j]['data_rights']=='Public':
+				plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False,color)
+				lslist.append('-')
+			else:
+				plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False,color,linestyle='dashed')
+				lslist.append('dashed')
+			
+			
+			if (0.5*master_MOUS_list[j]['FoV_arcsec'])>biggestr:
+				biggestr=(0.5*master_MOUS_list[j]['FoV_arcsec'])+5.
 		plt.xlabel("Relative R.A. [\"]",weight='bold')
 		plt.ylabel("Relative Dec. [\"]",weight='bold')
 
@@ -465,7 +472,7 @@ for i in range(len(ff)):
 		plt.ylim(-1.*biggestr,biggestr)
 		indexproj=sortpl(projlist)
 		for j in indexproj:
-			axes.plot(-1E+100,-1E+100,marker='.',color=colorlist[j],label=projlist[j],linestyle=lslist[j])
+			axes.plot(-1E+100,-1E+100,marker='.',color=colorscheme[j],label=projlist[j],linestyle=lslist[j])
 		plt.legend()
 		plt.savefig('OUTPUTS/'+name+'/FoV_'+name+'.png',dpi=300,bbox_inches='tight')
 		plt.close()
@@ -518,13 +525,18 @@ for i in range(len(ff)):
 		cont_table_txt.close()
 		#
 		mous_table_txt=open('OUTPUTS/MOUSTable.txt','a')
+		mega_str=''
 		for k in range(len(master_MOUS_list)):
-			mous_table_txt.write(str(master_MOUS_list[k]['member_ous_uid'])+'\n')
+			temp_str=str(master_MOUS_list[k]['project_code'])+' '+str(master_MOUS_list[k]['member_ous_uid'])+'\n'
+			if temp_str not in mega_str:
+				mega_str+=temp_str
+				mous_table_txt.write(str(master_MOUS_list[k]['project_code'])+' '+str(master_MOUS_list[k]['member_ous_uid'])+'\n')
 		mous_table_txt.write('-----\n')
 		mous_table_txt.close()
 		
 	if make_line_plots:
 		fig, axes = plt.subplots(3,4,figsize=(12,10))
+		#Get values from line table
 		mlp=open('OUTPUTS/LineTable.txt','r')
 		mlpf=mlp.readlines()
 		line_lines=[-1,-1]
@@ -535,51 +547,55 @@ for i in range(len(ff)):
 					if '----' in mlpf[mlp_j]:
 						line_lines[1]=mlp_j-1
 						break
-		linelist=[];numlines=0;L_INDEX=-1;bigvals=[]
-		projlist=[];P_INDEX=-1
+		#Convert observation details into arrays
+		projlist=[];linenames=[];IT=[]; AR=[]; subplotnums=[]
+		#Also include total info
+		NumLines=0; LineList=[]; BigVals=[]; ProjList=[]
 		if line_lines[1]-line_lines[0]!=1:
 			for mlp_i in range(line_lines[0]+2,line_lines[1]+1):
 				temp_mlp=mlpf[mlp_i].split(' ')
-				LN=temp_mlp[0]+' '+temp_mlp[1]
-				PR=str(temp_mlp[2]).replace('\n','')
-				AR=float(temp_mlp[3])
-				IT=float(temp_mlp[4])/3600.
-				if LN not in linelist:
-					linelist.append(LN)
-					L_INDEX=numlines
-					numlines+=1
-					bigvals.append([IT,AR])
+				projlist.append(str(temp_mlp[2]))
+				AR.append(float(temp_mlp[3]))
+				IT.append(float(temp_mlp[4])/3600.)
+				if (temp_mlp[0]+' '+temp_mlp[1]) in LineList:
+					L_INDEX = LineList.index(temp_mlp[0]+' '+temp_mlp[1])
+					subplotnums.append(getsubplotnum3(L_INDEX))
+					if float(temp_mlp[4])/3600.>BigVals[L_INDEX][0]:
+						BigVals[L_INDEX][0]=float(temp_mlp[4])/3600.
+					if float(temp_mlp[3])>BigVals[L_INDEX][1]:
+						BigVals[L_INDEX][1]=float(temp_mlp[3])
 				else:
-					L_INDEX=linelist.index(LN)
-					if IT>bigvals[L_INDEX][0]:
-						bigvals[L_INDEX][0]=IT
-					if AR>bigvals[L_INDEX][1]:
-						bigvals[L_INDEX][1]=AR
-				if PR not in projlist:
-					projlist.append(PR)
-				PNUM=projlist.index(PR)
-				plot_index=getsubplotnum3(L_INDEX)
-				axes[plot_index[0],plot_index[1]].scatter([IT],[AR],marker='s',color=colorscheme[PNUM])
-		try:
-			for mlp_i in range(12):
+					subplotnums.append(getsubplotnum3(NumLines))
+					NumLines+=1
+					BigVals.append([float(temp_mlp[4])/3600.,float(temp_mlp[3])])
+					LineList.append(temp_mlp[0]+' '+temp_mlp[1])
+				if str(temp_mlp[2]) not in ProjList:
+					ProjList.append(str(temp_mlp[2]))
+		indexproj=sortpl(ProjList)
+		sorted_list=sortpl2(ProjList)
+		for mlp_i in range(len(projlist)):
+			tempcolorindex=sorted_list.index(projlist[mlp_i])
+			axes[subplotnums[mlp_i][0],subplotnums[mlp_i][1]].scatter([IT[mlp_i]],[AR[mlp_i]], marker='s', color=colorscheme[tempcolorindex])
+		for mlp_i in range(12):
+			try:
 				plot_index=getsubplotnum3(mlp_i)
-				if mlp_i<len(linelist):
-					axes[plot_index[0],plot_index[1]].set_title(linelist[mlp_i],weight='bold')
-					axes[plot_index[0],plot_index[1]].set_xlim(0,1.1*bigvals[mlp_i][0])
-					axes[plot_index[0],plot_index[1]].set_ylim(0,1.1*bigvals[mlp_i][1])
+				if mlp_i<NumLines:
+					axes[plot_index[0],plot_index[1]].set_title(LineList[mlp_i],weight='bold')
+					axes[plot_index[0],plot_index[1]].set_xlim(0,1.1*BigVals[mlp_i][0])
+					axes[plot_index[0],plot_index[1]].set_ylim(0,1.1*BigVals[mlp_i][1])
 				else:
 					axes[plot_index[0],plot_index[1]].set_visible(False)
-		except TypeError:
-			pass
+			except TypeError:
+				pass
+
 		mlp.close()
 		fig.add_subplot(111, frameon=False)
 		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold',x=0.56)
 		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
 		plt.xlabel("Integration Time [hr]",weight='bold')
 		plt.ylabel("Spatial Resolution [\"]",weight='bold')
-		indexproj=sortpl(projlist)
-		for PN_I in indexproj:
-			plt.plot([], [], marker='s', label=projlist[PN_I], color=colorscheme[PN_I], linestyle=None)
+		for mlp_j in range(len(indexproj)):
+			plt.plot([], [], marker='s', label=ProjList[indexproj[mlp_j]], color=colorscheme[mlp_j], linestyle=None)
 		plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=4, fancybox=True, shadow=True, numpoints=1, handlelength=0)
 		plt.tight_layout(pad=5.0,w_pad=0.1,h_pad=0.3)
 		plt.savefig('OUTPUTS/'+name+'/LinePlot_'+name+'.png',dpi=300,bbox_inches='tight')
@@ -591,8 +607,14 @@ for i in range(len(ff)):
 			os.mkdir('OUTPUTS/'+name+'/data')
 		except FileExistsError:
 			pass
+
 		#Get data
-		alminer.download_data(myquery, fitsonly=False, dryrun=False, location='OUTPUTS/'+name+'/data', filename_must_include=['_of_'], print_urls=True)
+		alminer.download_data(myquery, fitsonly=False, dryrun=True, location='OUTPUTS/'+name+'/data', print_urls=True, filename_must_include=['_of_'])
+
+
+		#alminer.download_data(observations, fitsonly=True, dryrun=True, location='./data', filename_must_include=['_sci', '.pbcor', 'cont', 'G31.41'], print_urls=True)
+
+		'''
 		#Untar everything
 		allfiles=os.listdir('OUTPUTS/'+name+'/data')
 		for file in allfiles:
@@ -600,7 +622,6 @@ for i in range(len(ff)):
 				my_tar = tarfile.open('OUTPUTS/'+name+'/data/'+file)
 				my_tar.extractall('OUTPUTS/'+name+'/data/'+file.replace('.tar','')) # specify which folder to extract to
 				my_tar.close()
-				'''
 				#Get .fits
 				res = []
 				for (dir_path, dir_names, file_names) in os.walk('OUTPUTS/'+name+'/data/'+file.replace('.tar','')):
@@ -615,7 +636,7 @@ for i in range(len(ff)):
 					hdr = hdul[0].header
 					wcs=WCS(hdr)
 					print(wcs.all_pix2world())
-				'''
+		'''
 
 f.close()
 
