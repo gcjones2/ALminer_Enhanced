@@ -1,26 +1,21 @@
 '''
-cd /Users/garethjones/Desktop/ALminer_Enhanced
-conda activate py39
-python alminer_test_V2.py 
+Last updated January 27, 2025
+Gareth C. Jones
+gj283@cam.ac.uk
 '''
 
-#What should we do?
-make_spec_plots=True
-make_cont_plots=True
-make_spat_plots=True
-make_tables=True
-make_line_plots=True
+# To be added in future version
 download_products=False
-infile='INPUTS/IFS_Table.txt'
-#infile='INPUTS/lester.txt'
-#infile='INPUTS/JADES_in.txt'
+
+infile='INPUTS/JADES_12637.txt'
 
 #------------------------
 
 import alminer
 import pandas
 from astropy.io import ascii
-from matplotlib import pyplot as plt
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import matplotlib
 import numpy as np
 import os
@@ -30,7 +25,7 @@ import astropy.wcs as wcs
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
-fs=13; fs2=25
+fs=11; fs2=25
 font = {'family' : 'sans-serif','weight' : 'bold','size' : fs}
 matplotlib.rc('font', **font)
 
@@ -66,48 +61,59 @@ colorscheme=["#f42457",
 "#833b54"]
 
 #Finds right subplot (2x4) based on frequency
-def getsubplotnum(freq):
-	tempnum=[-1,-1]
+def getax_SC(freq):
+	tempnum=None
 	for sbi in range(len(almabands)):
 		if almabands[sbi][1]<freq and almabands[sbi][2]>freq:
-			if almabands[sbi][0]==3: tempnum=[0,0]
-			if almabands[sbi][0]==4: tempnum=[0,1]
-			if almabands[sbi][0]==5: tempnum=[0,2]
-			if almabands[sbi][0]==6: tempnum=[0,3]
-			if almabands[sbi][0]==7: tempnum=[1,0]
-			if almabands[sbi][0]==8: tempnum=[1,1]
-			if almabands[sbi][0]==9: tempnum=[1,2]
-			if almabands[sbi][0]==10: tempnum=[1,3]
+			if almabands[sbi][0]==3: tempnum=SC_B3
+			if almabands[sbi][0]==4: tempnum=SC_B4
+			if almabands[sbi][0]==5: tempnum=SC_B5
+			if almabands[sbi][0]==6: tempnum=SC_B6
+			if almabands[sbi][0]==7: tempnum=SC_B7
+			if almabands[sbi][0]==8: tempnum=SC_B8
+			if almabands[sbi][0]==9: tempnum=SC_B9
+			if almabands[sbi][0]==10: tempnum=SC_B10
 	return tempnum
 
 #Finds right subplot (2x4) based on number
-def getsubplotnum2(num):
-	tempnum=[-1,-1]
-	if num==0: tempnum=[0,0]
-	if num==1: tempnum=[0,1]
-	if num==2: tempnum=[0,2]
-	if num==3: tempnum=[0,3]
-	if num==4: tempnum=[1,0]
-	if num==5: tempnum=[1,1]
-	if num==6: tempnum=[1,2]
-	if num==7: tempnum=[1,3]
+def getsubplotnum2_SC(num):
+	tempnum=None
+	if num==0: tempnum=SC_B3
+	if num==1: tempnum=SC_B4
+	if num==2: tempnum=SC_B5
+	if num==3: tempnum=SC_B6
+	if num==4: tempnum=SC_B7
+	if num==5: tempnum=SC_B8
+	if num==6: tempnum=SC_B9
+	if num==7: tempnum=SC_B10
+	return tempnum
+def getsubplotnum2_CC(num):
+	tempnum=None
+	if num==0: tempnum=CC_B3
+	if num==1: tempnum=CC_B4
+	if num==2: tempnum=CC_B5
+	if num==3: tempnum=CC_B6
+	if num==4: tempnum=CC_B7
+	if num==5: tempnum=CC_B8
+	if num==6: tempnum=CC_B9
+	if num==7: tempnum=CC_B10
 	return tempnum
 
 #Finds right subplot (3x4) based on number
 def getsubplotnum3(num):
-	tempnum=[-1,-1]
-	if num==0: tempnum=[0,0]
-	if num==1: tempnum=[0,1]
-	if num==2: tempnum=[0,2]
-	if num==3: tempnum=[0,3]
-	if num==4: tempnum=[1,0]
-	if num==5: tempnum=[1,1]
-	if num==6: tempnum=[1,2]
-	if num==7: tempnum=[1,3]
-	if num==8: tempnum=[2,0]
-	if num==9: tempnum=[2,1]
-	if num==10: tempnum=[2,2]
-	if num==11: tempnum=[2,3]	
+	tempnum=None
+	if num==0: tempnum=ax_lines_1a
+	if num==1: tempnum=ax_lines_1b
+	if num==2: tempnum=ax_lines_1c
+	if num==3: tempnum=ax_lines_1d
+	if num==4: tempnum=ax_lines_2a
+	if num==5: tempnum=ax_lines_2b
+	if num==6: tempnum=ax_lines_2c
+	if num==7: tempnum=ax_lines_2d
+	if num==8: tempnum=ax_lines_3a
+	if num==9: tempnum=ax_lines_3b
+	if num==10: tempnum=ax_lines_3c
+	if num==11: tempnum=ax_lines_3d	
 	return tempnum
 
 #Checks if two values are within a delta of each other
@@ -149,11 +155,11 @@ def spwoverlap(entry1,entry2):
 		return False
 
 #Plot circle
-def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,color,linestyle='-'):
+def plotCircle(RA_C,DEC_C,RAD_C,FILL_C,color,whichax,linestyle='-'):
 	if FILL_C:
-		axes.add_patch(plt.Circle((RA_C,DEC_C), RAD_C, edgecolor=color, alpha=0.1, fill=FILL_C, facecolor=color,linestyle=linestyle))
+		whichax.add_patch(plt.Circle((RA_C,DEC_C), RAD_C, edgecolor=color, alpha=0.6, fill=FILL_C, facecolor=color,linestyle=linestyle))
 	else:
-		axes.add_patch(plt.Circle((RA_C,DEC_C), RAD_C, edgecolor=color, alpha=1.0, fill=FILL_C, facecolor=color,linestyle=linestyle))
+		whichax.add_patch(plt.Circle((RA_C,DEC_C), RAD_C, edgecolor=color, alpha=1.0, fill=FILL_C, facecolor=color,linestyle=linestyle))
 
 #-------
 
@@ -200,25 +206,31 @@ for i in range(5,len(ff_atm)):
 		atm_data_10[1].append(float(atm_temp[1].replace(' \n','')))
 
 #Reset line table
-if make_tables:
-	line_table_txt=open('OUTPUTS/LineTable.txt','w');line_table_txt.close()
-	#
-	cont_table_txt=open('OUTPUTS/ContTable.txt','w');cont_table_txt.close()
-	#
-	mous_table_txt=open('OUTPUTS/MOUSTable.txt','w');mous_table_txt.close()
+line_table_txt=open('OUTPUTS/LineTable.txt','w');line_table_txt.close()
+#
+cont_table_txt=open('OUTPUTS/ContTable.txt','w');cont_table_txt.close()
+#
+mous_table_txt=open('OUTPUTS/MOUSTable.txt','w');mous_table_txt.close()
 
 for i in range(len(ff)):
 
 	#Get RA and DEC of target
-	temp=ff[i].split(' ')
+	temp=ff[i].split('	')
 	name=temp[0]
-	RA=(180./12.)*(float(temp[1])+(float(temp[2])/60.)+(float(temp[3])/3600.))
-	decfact=1.
-	if float(temp[4])<0.:
-		decfact=-1.
-		temp[4]=abs(float(temp[4]))
-	DEC=decfact*(float(temp[4])+(float(temp[5])/60.)+(float(temp[6])/3600.))
-	zred=float(temp[7])
+	if len(temp)>4:
+		RA=(180./12.)*(float(temp[1])+(float(temp[2])/60.)+(float(temp[3])/3600.))
+		decfact=1.
+		if float(temp[4])<0.:
+			decfact=-1.
+			temp[4]=abs(float(temp[4]))
+		DEC=decfact*(float(temp[4])+(float(temp[5])/60.)+(float(temp[6])/3600.))
+		zred=float(temp[7])
+	else:
+		temp=ff[i].split('\t')
+		name=temp[0]
+		RA = float(temp[1])
+		DEC = float(temp[2])
+		zred=float(temp[3])
 
 	#Get lines
 	lines=[]
@@ -232,15 +244,10 @@ for i in range(len(ff)):
 		lines.append([templine_name,templine_freq])
 	g.close()
 
-	#Make sure the object directory exists
-	try:
-		os.mkdir('OUTPUTS/'+name)
-	except FileExistsError:
-		pass
-
 	#Query ALMA archive for RA, DEC
 	print('->',name)
-	myquery = alminer.conesearch(ra=RA, dec=DEC, public=True, point=False, tap_service='NRAO', print_query=False, search_radius=2.0)
+	myquery = alminer.conesearch(ra=RA, dec=DEC, public=True, point=False, tap_service='ESO', print_query=True, search_radius=5.0)
+	#myquery = alminer.conesearch(ra=RA, dec=DEC, public=True, point=False, print_query=True, search_radius=10.0)
 
 	#Get basic details of each returned observation
 	EXPLORATION=alminer.explore(myquery, allcols=True, allrows=True)
@@ -254,7 +261,7 @@ for i in range(len(ff)):
 				C1 = SkyCoord(ra=EXPLORATION.loc[e_i]['RAJ2000']*u.degree, dec=EXPLORATION.loc[e_i]['DEJ2000']*u.degree)
 				DEL=C0.separation(C1).arcsecond
 				if DEL<0.5*EXPLORATION.loc[e_i]['FoV_arcsec'] :
-					print(EXPLORATION.loc[e_i])
+					#print(EXPLORATION.loc[e_i])
 					#print('Good -            ',EXPLORATION.loc[e_i]['project_code'],EXPLORATION.loc[e_i]['RAJ2000'],EXPLORATION.loc[e_i]['DEJ2000'])
 					temp_MOUS_list={}
 					temp_MOUS_list['project_code']=EXPLORATION.loc[e_i]['project_code']
@@ -276,63 +283,142 @@ for i in range(len(ff)):
 					pass#print('Too far!',EXPLORATION.loc[e_i]['project_code'])
 	except AttributeError:
 		pass
-		
-	#Make plots showing which lines fall into which band, and how many projects have observed each spectral range. Added in atmospheric transmission overlays.
-	if make_spec_plots:
-		linecolor='k'
-		atmcolor=colorscheme[4]
-		datacolor=colorscheme[5]
-		#Plot spectral coverage
-		fig, axes = plt.subplots(2,4,figsize=(12,8))
-		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
-		bigstep_x=np.arange(84.0,950.0,0.1)
-		bigstep_y=np.zeros(len(bigstep_x))
-		projlist=[]
-		projvalues=[]
-		for j in range(len(master_MOUS_list)):
-			tempx1=master_MOUS_list[j]['min_freq_GHz']
-			tempx2=master_MOUS_list[j]['max_freq_GHz']
-			if master_MOUS_list[j]['project_code'] not in projlist:
-				projlist.append(master_MOUS_list[j]['project_code'])
-				tempy=np.zeros(len(bigstep_x))
-				for jj in range(len(bigstep_x)):
-					if bigstep_x[jj]>tempx1 and bigstep_x[jj]<tempx2:
-						tempy[jj]=1
-				projvalues.append(tempy)
-			else:
-				projindex=projlist.index(master_MOUS_list[j]['project_code'])
-				tempy=projvalues[projindex]
-				for jj in range(len(bigstep_x)):
-					if bigstep_x[jj]>tempx1 and bigstep_x[jj]<tempx2:
-						tempy[jj]=1
-				projvalues[projindex]=tempy
-		for j in range(len(projlist)):
+	#	
+	# Initialise big plot
+	#
+	fig = plt.figure(figsize=(12,10))
+	fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
+	gs_FULL = fig.add_gridspec(2, 2, wspace=0.4, hspace=0.3)
+
+	#
+	# Make plots showing which lines fall into which band, and how many projects have observed each spectral range. Added in atmospheric transmission overlays.
+	#
+	gs_A = gs_FULL[0].subgridspec(4, 4, wspace=0.15, hspace=0.5)
+	SC_B3 = plt.subplot(gs_A[0:2, 0])
+	SC_B4 = plt.subplot(gs_A[0:2, 1])
+	SC_B5 = plt.subplot(gs_A[0:2, 2])
+	SC_B6 = plt.subplot(gs_A[0:2, 3])
+	SC_B7 = plt.subplot(gs_A[2:, 0])
+	SC_B8 = plt.subplot(gs_A[2:, 1])
+	SC_B9 = plt.subplot(gs_A[2:, 2])
+	SC_B10 = plt.subplot(gs_A[2:, 3])
+	atmcolor=colorscheme[4]; datacolor=colorscheme[5]
+	bigstep_x=np.arange(84.0,950.0,0.1); bigstep_y=np.zeros(len(bigstep_x))
+	projlist=[]; projvalues=[]
+	for j in range(len(master_MOUS_list)):
+		tempx1=master_MOUS_list[j]['min_freq_GHz']
+		tempx2=master_MOUS_list[j]['max_freq_GHz']
+		if master_MOUS_list[j]['project_code'] not in projlist:
+			projlist.append(master_MOUS_list[j]['project_code'])
+			tempy=np.zeros(len(bigstep_x))
 			for jj in range(len(bigstep_x)):
-				bigstep_y[jj]+=projvalues[j][jj]
-		if projlist==[]:
-			for plt_i in [0,1]:
-				for plt_j in [0,1,2,3]:
-					axes[plt_i,plt_j].set_ylim(-0.1,1.1)
-		#Add lines
-		for j in range(len(lines)):
-			linefreq=lines[j][1]/(1+zred)
-			if getsubplotnum(linefreq)[0]!=-1:
-				axisnums=getsubplotnum(linefreq)
-				axes[axisnums[0],axisnums[1]].axvline(linefreq,linestyle='dashed',c=linecolor)
-				xmin, xmax, ymin, ymax = plt.axis()
-				axes[axisnums[0],axisnums[1]].text(linefreq,(ymax-ymin)*0.5,lines[j][0],rotation=270,fontsize=8)
-		#Add band names
+				if bigstep_x[jj]>tempx1 and bigstep_x[jj]<tempx2:
+					tempy[jj]=1
+			projvalues.append(tempy)
+		else:
+			projindex=projlist.index(master_MOUS_list[j]['project_code'])
+			tempy=projvalues[projindex]
+			for jj in range(len(bigstep_x)):
+				if bigstep_x[jj]>tempx1 and bigstep_x[jj]<tempx2:
+					tempy[jj]=1
+			projvalues[projindex]=tempy
+	for j in range(len(projlist)):
+		for jj in range(len(bigstep_x)):
+			bigstep_y[jj]+=projvalues[j][jj]
+	if projlist==[]:
+		for plt_i in [SC_B3, SC_B4, SC_B5, SC_B6, SC_B7, SC_B8, SC_B9, SC_B10]:
+			plt_i.set_ylim(-0.1,1.1)
+	#Add lines
+	for j in range(len(lines)):
+		linefreq=lines[j][1]/(1+zred)
+		if getax_SC(linefreq)!=None:
+			axis_name=getax_SC(linefreq)
+			axis_name.axvline(linefreq,linestyle='dashed',c='k')
+			xmin, xmax, ymin, ymax = plt.axis()
+			axis_name.text(linefreq,(ymax-ymin)*0.5,lines[j][0],rotation=270,fontsize=8)
+	#Add band names
+	for j in range(8):
+		axis_name=getsubplotnum2_SC(j)
+		axis_name.plot(bigstep_x,bigstep_y,c=datacolor)
+		axis_name.set_ylim(0,max(bigstep_y)+1)
+		axis_name.set_xlim(almabands[j][1],almabands[j][2])
+		xpostext=axis_name.get_xlim()[0]+0.05*abs(axis_name.get_xlim()[0]-axis_name.get_xlim()[1])
+		ypostext=axis_name.get_ylim()[1]-0.09*abs(axis_name.get_ylim()[0]-axis_name.get_ylim()[1])
+		axis_name.text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=0.8),fontsize=9)
+		axis_name.yaxis.get_major_locator().set_params(integer=True)
+		#
+		ax2 = axis_name.twinx()
+		ax2.tick_params(axis='y', labelcolor=atmcolor)
+		if j==0:
+			ax2.plot(atm_data_3[0],atm_data_3[1],c=atmcolor,alpha=0.8)
+		if j==1:
+			ax2.plot(atm_data_4[0],atm_data_4[1],c=atmcolor,alpha=0.8)
+		if j==2:
+			ax2.plot(atm_data_5[0],atm_data_5[1],c=atmcolor,alpha=0.8)
+		if j==3:
+			ax2.plot(atm_data_6[0],atm_data_6[1],c=atmcolor,alpha=0.8)
+		if j==4:
+			ax2.plot(atm_data_7[0],atm_data_7[1],c=atmcolor,alpha=0.8)
+		if j==5:
+			ax2.plot(atm_data_8[0],atm_data_8[1],c=atmcolor,alpha=0.8)
+		if j==6:
+			ax2.plot(atm_data_9[0],atm_data_9[1],c=atmcolor,alpha=0.8)
+		if j==7:
+			ax2.plot(atm_data_10[0],atm_data_10[1],c=atmcolor,alpha=0.8)
+		if j not in [3,7]:
+			ax2.get_yaxis().set_visible(False)
+		if j not in [0,4]:
+			axis_name.get_yaxis().set_visible(False)
+		ax2.set_ylim(0.0,1.0)
+	ax1=fig.add_subplot(221, frameon=False)
+	plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+	plt.xlabel("Observed Frequency [GHz]",weight='bold')
+	plt.ylabel("Number of Projects",weight='bold',color=datacolor)
+	ax2 = fig.add_subplot(221, sharex=ax1, frameon=False)
+	ax2.yaxis.set_label_position("right")
+	plt.ylabel('Atmospheric Transmission', rotation=270,labelpad=50.0,color=atmcolor,weight='bold')
+	plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+
+	#
+	#Make plots showing continuum sensitivity in each band.
+	#
+	gs_B = gs_FULL[2].subgridspec(4, 4, wspace=0.15, hspace=0.5)
+	CC_B3 = plt.subplot(gs_B[:2, 0])
+	CC_B4 = plt.subplot(gs_B[:2, 1])
+	CC_B5 = plt.subplot(gs_B[:2, 2])
+	CC_B6 = plt.subplot(gs_B[:2, 3])
+	CC_B7 = plt.subplot(gs_B[2:, 0])
+	CC_B8 = plt.subplot(gs_B[2:, 1])
+	CC_B9 = plt.subplot(gs_B[2:, 2])
+	CC_B10 = plt.subplot(gs_B[2:, 3])
+	try:
+		bigstep_all=[]
+		for j in range(len(master_MOUS_list)):	
+			Pp=master_MOUS_list[j]['project_code']
+			Ss=master_MOUS_list[j]['cont_sens_bandwidth']
+			Ff=master_MOUS_list[j]['central_freq_GHz']
+			added=False
+			for jj in range(len(bigstep_all)):
+				if Pp==bigstep_all[jj]['P'] and Ss==bigstep_all[jj]['S']:
+					bigstep_all[jj]['F'].append(Ff)
+					added=True
+			if not added:
+				bigstep_all.append({'P':Pp,'S':Ss,'F':[Ff]})
 		for j in range(8):
-			axisnums=getsubplotnum2(j)
-			axes[axisnums[0],axisnums[1]].plot(bigstep_x,bigstep_y,c=datacolor)
-			axes[axisnums[0],axisnums[1]].set_ylim(0,max(bigstep_y)+1)
-			axes[axisnums[0],axisnums[1]].set_xlim(almabands[j][1],almabands[j][2])
-			xpostext=axes[axisnums[0],axisnums[1]].get_xlim()[0]+0.05*abs(axes[axisnums[0],axisnums[1]].get_xlim()[0]-axes[axisnums[0],axisnums[1]].get_xlim()[1])
-			ypostext=axes[axisnums[0],axisnums[1]].get_ylim()[1]-0.09*abs(axes[axisnums[0],axisnums[1]].get_ylim()[0]-axes[axisnums[0],axisnums[1]].get_ylim()[1])
-			axes[axisnums[0],axisnums[1]].text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=0.8))
-			axes[axisnums[0],axisnums[1]].yaxis.get_major_locator().set_params(integer=True)
+			axis_name=getsubplotnum2_CC(j)
+			max_S=-1
+			for jj in range(len(bigstep_all)):
+				axis_name.plot(bigstep_all[jj]['F'],[bigstep_all[jj]['S'] for x in range(len(bigstep_all[jj]['F']))],c=datacolor,marker='v',linestyle='dashed')
+				if bigstep_all[jj]['S']>max_S:
+					max_S=bigstep_all[jj]['S']
+			axis_name.set_ylim(0,max_S*1.3)
+			axis_name.set_xlim(almabands[j][1],almabands[j][2])
+			xpostext=axis_name.get_xlim()[0]+0.05*abs(axis_name.get_xlim()[0]-axis_name.get_xlim()[1])
+			ypostext=axis_name.get_ylim()[1]-0.09*abs(axis_name.get_ylim()[0]-axis_name.get_ylim()[1])
+			axis_name.text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=0.8),fontsize=9)
+			axis_name.yaxis.get_major_locator().set_params(integer=True)
 			#
-			ax2 = axes[axisnums[0],axisnums[1]].twinx()
+			ax2 = axis_name.twinx()
 			ax2.tick_params(axis='y', labelcolor=atmcolor)
 			if j==0:
 				ax2.plot(atm_data_3[0],atm_data_3[1],c=atmcolor,alpha=0.8)
@@ -350,97 +436,34 @@ for i in range(len(ff)):
 				ax2.plot(atm_data_9[0],atm_data_9[1],c=atmcolor,alpha=0.8)
 			if j==7:
 				ax2.plot(atm_data_10[0],atm_data_10[1],c=atmcolor,alpha=0.8)
+			if j not in [3,7]:
+				ax2.get_yaxis().set_visible(False)
+			if j not in [0,4]:
+				axis_name.get_yaxis().set_visible(False)
 			ax2.set_ylim(0.0,1.0)
-		ax1=fig.add_subplot(111, frameon=False)
+		ax1=fig.add_subplot(223, frameon=False)
 		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
 		plt.xlabel("Observed Frequency [GHz]",weight='bold')
-		plt.ylabel("Number of Projects",weight='bold',color=datacolor)
-		ax2 = fig.add_subplot(111, sharex=ax1, frameon=False)
+		plt.ylabel("Continuum Sensitivity [uJy/beam]",weight='bold',color=datacolor)
+		ax2 = fig.add_subplot(223, sharex=ax1, frameon=False)
 		ax2.yaxis.set_label_position("right")
 		plt.ylabel('Atmospheric Transmission', rotation=270,labelpad=50.0,color=atmcolor,weight='bold')
 		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-		plt.tight_layout(pad=3.0,w_pad=0.1,h_pad=0.1)
-		#plt.show()
-		plt.savefig('OUTPUTS/'+name+'/SpecCoverage_'+name+'.png',dpi=300,bbox_inches='tight')
-		plt.close()
+	except ValueError:
+		print('No Continuum')
 
-	#Make plots showing continuum sensitivity in each band.
-	if make_cont_plots:
-		try:
-			atmcolor=colorscheme[4]
-			datacolor=colorscheme[5]
-			fig, axes = plt.subplots(2,4,figsize=(12,8))
-			fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
-			bigstep_all=[]
-			for j in range(len(master_MOUS_list)):	
-				Pp=master_MOUS_list[j]['project_code']
-				Ss=master_MOUS_list[j]['cont_sens_bandwidth']
-				Ff=master_MOUS_list[j]['central_freq_GHz']
-				added=False
-				for jj in range(len(bigstep_all)):
-					if Pp==bigstep_all[jj]['P'] and Ss==bigstep_all[jj]['S']:
-						bigstep_all[jj]['F'].append(Ff)
-						added=True
-				if not added:
-					bigstep_all.append({'P':Pp,'S':Ss,'F':[Ff]})
-			for j in range(8):
-				axisnums=getsubplotnum2(j)
-				max_S=-1
-				for jj in range(len(bigstep_all)):
-					axes[axisnums[0],axisnums[1]].plot(bigstep_all[jj]['F'],[bigstep_all[jj]['S'] for x in range(len(bigstep_all[jj]['F']))],c=datacolor,marker='v',linestyle='dashed')
-					if bigstep_all[jj]['S']>max_S:
-						max_S=bigstep_all[jj]['S']
-				axes[axisnums[0],axisnums[1]].set_ylim(0,max_S*1.3)
-				axes[axisnums[0],axisnums[1]].set_xlim(almabands[j][1],almabands[j][2])
-				xpostext=axes[axisnums[0],axisnums[1]].get_xlim()[0]+0.05*abs(axes[axisnums[0],axisnums[1]].get_xlim()[0]-axes[axisnums[0],axisnums[1]].get_xlim()[1])
-				ypostext=axes[axisnums[0],axisnums[1]].get_ylim()[1]-0.09*abs(axes[axisnums[0],axisnums[1]].get_ylim()[0]-axes[axisnums[0],axisnums[1]].get_ylim()[1])
-				axes[axisnums[0],axisnums[1]].text(xpostext,ypostext,'Band '+str(almabands[j][0]),bbox=dict(facecolor='white', alpha=0.8))
-				axes[axisnums[0],axisnums[1]].yaxis.get_major_locator().set_params(integer=True)
-				#
-				ax2 = axes[axisnums[0],axisnums[1]].twinx()
-				ax2.tick_params(axis='y', labelcolor=atmcolor)
-				if j==0:
-					ax2.plot(atm_data_3[0],atm_data_3[1],c=atmcolor,alpha=0.8)
-				if j==1:
-					ax2.plot(atm_data_4[0],atm_data_4[1],c=atmcolor,alpha=0.8)
-				if j==2:
-					ax2.plot(atm_data_5[0],atm_data_5[1],c=atmcolor,alpha=0.8)
-				if j==3:
-					ax2.plot(atm_data_6[0],atm_data_6[1],c=atmcolor,alpha=0.8)
-				if j==4:
-					ax2.plot(atm_data_7[0],atm_data_7[1],c=atmcolor,alpha=0.8)
-				if j==5:
-					ax2.plot(atm_data_8[0],atm_data_8[1],c=atmcolor,alpha=0.8)
-				if j==6:
-					ax2.plot(atm_data_9[0],atm_data_9[1],c=atmcolor,alpha=0.8)
-				if j==7:
-					ax2.plot(atm_data_10[0],atm_data_10[1],c=atmcolor,alpha=0.8)
-				ax2.set_ylim(0.0,1.0)
-			ax1=fig.add_subplot(111, frameon=False)
-			plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-			plt.xlabel("Observed Frequency [GHz]",weight='bold')
-			plt.ylabel("Continuum Sensitivity [uJy/beam]",weight='bold',color=datacolor)
-			ax2 = fig.add_subplot(111, sharex=ax1, frameon=False)
-			ax2.yaxis.set_label_position("right")
-			plt.ylabel('Atmospheric Transmission', rotation=270,labelpad=50.0,color=atmcolor,weight='bold')
-			plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-			plt.tight_layout(pad=3.0,w_pad=0.1,h_pad=0.1)
-			#plt.show()
-			plt.savefig('OUTPUTS/'+name+'/ContCoverage_'+name+'.png',dpi=300,bbox_inches='tight')
-			plt.close()
-		except ValueError:
-			print('No Continuum')
-
-	if make_spat_plots:
-		fig, axes = plt.subplots(1,1,figsize=(8,8))
-		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold')
-		plt.axvline(0,linestyle='dashed',color='k',alpha=0.5)
-		plt.axhline(0,linestyle='dashed',color='k',alpha=0.5)
-		projlist=[];lslist=[]
-		biggestr=40.
-		for j in range(len(master_MOUS_list)):
-			if master_MOUS_list[j]['project_code'] not in projlist:
-				projlist.append(master_MOUS_list[j]['project_code'])
+	#
+	# Make FoV plot
+	#
+	gs_C = gs_FULL[1].subgridspec(1, 1)
+	ax_fov = plt.subplot(gs_C[:,:], aspect=1.0)
+	ax_fov.axvline(0,linestyle='dashed',color='k',alpha=0.5)
+	ax_fov.axhline(0,linestyle='dashed',color='k',alpha=0.5)
+	projlist=[];lslist=[]
+	biggestr=40.
+	for j in range(len(master_MOUS_list)):
+		if master_MOUS_list[j]['project_code'] not in projlist:
+			projlist.append(master_MOUS_list[j]['project_code'])
 			color = colorscheme[projlist.index(master_MOUS_list[j]['project_code'])]
 			C_Origin = SkyCoord(ra=RA*u.degree, dec=DEC*u.degree)
 			C_DelRA  = SkyCoord(ra=master_MOUS_list[j]['RAJ2000']*u.degree, dec=DEC*u.degree)
@@ -454,152 +477,162 @@ for i in range(len(ff)):
 			else:
 				D_DEC = -1.*C_Origin.separation(C_DelDe).arcsecond
 
-			plotCircle(D_RA,D_DEC,master_MOUS_list[j]['ang_res_arcsec']/2.,True,color)
+			plotCircle(D_RA,D_DEC,master_MOUS_list[j]['ang_res_arcsec']/2.,True,color,ax_fov)
 			if master_MOUS_list[j]['data_rights']=='Public':
-				plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False,color)
+				plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False,color,ax_fov)
 				lslist.append('-')
 			else:
-				plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False,color,linestyle='dashed')
+				plotCircle(D_RA,D_DEC,master_MOUS_list[j]['FoV_arcsec']/2.,False,color,ax_fov,linestyle='dashed')
 				lslist.append('dashed')
 			
 			
 			if (0.5*master_MOUS_list[j]['FoV_arcsec'])>biggestr:
 				biggestr=(0.5*master_MOUS_list[j]['FoV_arcsec'])+5.
-		plt.xlabel("Relative R.A. [\"]",weight='bold')
-		plt.ylabel("Relative Dec. [\"]",weight='bold')
+	ax_fov.set_xlabel("Relative R.A. [\"]",weight='bold')
+	ax_fov.set_ylabel("Relative Dec. [\"]",weight='bold')
 
-		plt.xlim(biggestr,-1.*biggestr)
-		plt.ylim(-1.*biggestr,biggestr)
-		indexproj=sortpl(projlist)
-		for j in indexproj:
-			axes.plot(-1E+100,-1E+100,marker='.',color=colorscheme[j],label=projlist[j],linestyle=lslist[j])
-		plt.legend()
-		plt.savefig('OUTPUTS/'+name+'/FoV_'+name+'.png',dpi=300,bbox_inches='tight')
-		plt.close()
+	ax_fov.set_xlim(biggestr,-1.*biggestr)
+	ax_fov.set_ylim(-1.*biggestr,biggestr)
+	indexproj=sortpl(projlist)
+	for j in indexproj:
+		ax_fov.plot(-1E+100,-1E+100,marker='.',color=colorscheme[j],label=projlist[j],linestyle=lslist[j])
+	ax_fov.legend(fontsize=7)
 
-	if make_tables:
-		line_table_txt=open('OUTPUTS/LineTable.txt','a')
-		line_table_txt.write(name+'\n')
-		line_table_txt.write('Line Project Ang_Res Int_Time Targ_Name\n')
-		table_line_list=[]
-		for j in range(len(lines)):
-			linefreq=lines[j][1]/(1+zred)
-			for k in range(len(master_MOUS_list)):
-				tempx1=master_MOUS_list[k]['min_freq_GHz']
-				tempx2=master_MOUS_list[k]['max_freq_GHz']
-				if tempx1<linefreq and tempx2>linefreq:
-					templineline=lines[j][0]+' '
-					templineline+=str(master_MOUS_list[k]['project_code'])+' '
-					templineline+=str(master_MOUS_list[k]['ang_res_arcsec'])+' '
-					templineline+=str(master_MOUS_list[k]['t_exptime'])+' '
-					templineline+=str(master_MOUS_list[k]['ALMA_source_name'])+'\n'
-					if templineline not in table_line_list:
-						line_table_txt.write(templineline)
-						table_line_list.append(templineline)
-		line_table_txt.write('-----\n')
-		line_table_txt.close()
-		#
-		big_cont_list=[]
+
+	#
+	# Make tables
+	#
+	line_table_txt=open('OUTPUTS/LineTable.txt','a')
+	line_table_txt.write(name+'\n')
+	line_table_txt.write('Line Project Ang_Res Int_Time Targ_Name\n')
+	table_line_list=[]
+	for j in range(len(lines)):
+		linefreq=lines[j][1]/(1+zred)
 		for k in range(len(master_MOUS_list)):
-			temp_cont={'freq':[float(master_MOUS_list[k]['central_freq_GHz'])], 'proj':str(master_MOUS_list[k]['project_code']), 'angres':str(master_MOUS_list[k]['ang_res_arcsec']), 'texp':str(master_MOUS_list[k]['t_exptime']), 'MOUS':str(master_MOUS_list[k]['member_ous_uid']), 'sourcename':str(master_MOUS_list[k]['ALMA_source_name'])}
-			absorbed=False
-			for ik in range(len(big_cont_list)):
-				if big_cont_list[ik]['proj']==temp_cont['proj'] and big_cont_list[ik]['MOUS']==temp_cont['MOUS']:
-					big_cont_list[ik]['freq'].append(temp_cont['freq'][0])
-					absorbed=True
-			if not absorbed:
-				big_cont_list.append(temp_cont)
-		cont_table_txt=open('OUTPUTS/ContTable.txt','a')
-		cont_table_txt.write(name+'\n')
-		cont_table_txt.write('Freq Project Ang_Res Int_Time Targ_Name Tunings MOUS\n')
-		for k in range(len(big_cont_list)):
-			tempcont=str(round(np.mean(big_cont_list[k]['freq']),3))+' '
-			tempcont+=str(big_cont_list[k]['proj'])+' '
-			tempcont+=str(big_cont_list[k]['angres'])+' '
-			tempcont+=str(big_cont_list[k]['texp'])+' '
-			tempcont+=str(big_cont_list[k]['sourcename'])+' '
-			tempcont+=str(int(len(big_cont_list[k]['freq'])/4))+' '
-			tempcont+=str(big_cont_list[k]['MOUS'])+'\n'
-			cont_table_txt.write(tempcont)
-		cont_table_txt.write('-----\n')
-		cont_table_txt.close()
-		#
-		mous_table_txt=open('OUTPUTS/MOUSTable.txt','a')
-		mega_str=''
-		for k in range(len(master_MOUS_list)):
-			temp_str=str(master_MOUS_list[k]['project_code'])+' '+str(master_MOUS_list[k]['member_ous_uid'])+'\n'
-			if temp_str not in mega_str:
-				mega_str+=temp_str
-				mous_table_txt.write(str(master_MOUS_list[k]['project_code'])+' '+str(master_MOUS_list[k]['member_ous_uid'])+'\n')
-		mous_table_txt.write('-----\n')
-		mous_table_txt.close()
-		
-	if make_line_plots:
-		fig, axes = plt.subplots(3,4,figsize=(12,10))
-		#Get values from line table
-		mlp=open('OUTPUTS/LineTable.txt','r')
-		mlpf=mlp.readlines()
-		line_lines=[-1,-1]
-		for mlp_i in range(len(mlpf)):
-			if mlpf[mlp_i].replace('\n','')==name:
-				line_lines[0]=mlp_i
-				for mlp_j in range(mlp_i,len(mlpf)):
-					if '----' in mlpf[mlp_j]:
-						line_lines[1]=mlp_j-1
-						break
-		#Convert observation details into arrays
-		projlist=[];linenames=[];IT=[]; AR=[]; subplotnums=[]
-		#Also include total info
-		NumLines=0; LineList=[]; BigVals=[]; ProjList=[]
-		if line_lines[1]-line_lines[0]!=1:
-			for mlp_i in range(line_lines[0]+2,line_lines[1]+1):
-				temp_mlp=mlpf[mlp_i].split(' ')
-				projlist.append(str(temp_mlp[2]))
-				AR.append(float(temp_mlp[3]))
-				IT.append(float(temp_mlp[4])/3600.)
-				if (temp_mlp[0]+' '+temp_mlp[1]) in LineList:
-					L_INDEX = LineList.index(temp_mlp[0]+' '+temp_mlp[1])
-					subplotnums.append(getsubplotnum3(L_INDEX))
-					if float(temp_mlp[4])/3600.>BigVals[L_INDEX][0]:
-						BigVals[L_INDEX][0]=float(temp_mlp[4])/3600.
-					if float(temp_mlp[3])>BigVals[L_INDEX][1]:
-						BigVals[L_INDEX][1]=float(temp_mlp[3])
-				else:
-					subplotnums.append(getsubplotnum3(NumLines))
-					NumLines+=1
-					BigVals.append([float(temp_mlp[4])/3600.,float(temp_mlp[3])])
-					LineList.append(temp_mlp[0]+' '+temp_mlp[1])
-				if str(temp_mlp[2]) not in ProjList:
-					ProjList.append(str(temp_mlp[2]))
-		indexproj=sortpl(ProjList)
-		sorted_list=sortpl2(ProjList)
-		for mlp_i in range(len(projlist)):
-			tempcolorindex=sorted_list.index(projlist[mlp_i])
-			axes[subplotnums[mlp_i][0],subplotnums[mlp_i][1]].scatter([IT[mlp_i]],[AR[mlp_i]], marker='s', color=colorscheme[tempcolorindex])
-		for mlp_i in range(12):
-			try:
-				plot_index=getsubplotnum3(mlp_i)
-				if mlp_i<NumLines:
-					axes[plot_index[0],plot_index[1]].set_title(LineList[mlp_i],weight='bold')
-					axes[plot_index[0],plot_index[1]].set_xlim(0,1.1*BigVals[mlp_i][0])
-					axes[plot_index[0],plot_index[1]].set_ylim(0,1.1*BigVals[mlp_i][1])
-				else:
-					axes[plot_index[0],plot_index[1]].set_visible(False)
-			except TypeError:
-				pass
+			tempx1=master_MOUS_list[k]['min_freq_GHz']
+			tempx2=master_MOUS_list[k]['max_freq_GHz']
+			if tempx1<linefreq and tempx2>linefreq:
+				templineline=lines[j][0]+' '
+				templineline+=str(master_MOUS_list[k]['project_code'])+' '
+				templineline+=str(master_MOUS_list[k]['ang_res_arcsec'])+' '
+				templineline+=str(master_MOUS_list[k]['t_exptime'])+' '
+				templineline+=str(master_MOUS_list[k]['ALMA_source_name'])+'\n'
+				if templineline not in table_line_list:
+					line_table_txt.write(templineline)
+					table_line_list.append(templineline)
+	line_table_txt.write('-----\n')
+	line_table_txt.close()
+	#
+	big_cont_list=[]
+	for k in range(len(master_MOUS_list)):
+		temp_cont={'freq':[float(master_MOUS_list[k]['central_freq_GHz'])], 'proj':str(master_MOUS_list[k]['project_code']), 'angres':str(master_MOUS_list[k]['ang_res_arcsec']), 'texp':str(master_MOUS_list[k]['t_exptime']), 'MOUS':str(master_MOUS_list[k]['member_ous_uid']), 'sourcename':str(master_MOUS_list[k]['ALMA_source_name'])}
+		absorbed=False
+		for ik in range(len(big_cont_list)):
+			if big_cont_list[ik]['proj']==temp_cont['proj'] and big_cont_list[ik]['MOUS']==temp_cont['MOUS']:
+				big_cont_list[ik]['freq'].append(temp_cont['freq'][0])
+				absorbed=True
+		if not absorbed:
+			big_cont_list.append(temp_cont)
+	cont_table_txt=open('OUTPUTS/ContTable.txt','a')
+	cont_table_txt.write(name+'\n')
+	cont_table_txt.write('Freq Project Ang_Res Int_Time Targ_Name Tunings MOUS\n')
+	for k in range(len(big_cont_list)):
+		tempcont=str(round(np.mean(big_cont_list[k]['freq']),3))+' '
+		tempcont+=str(big_cont_list[k]['proj'])+' '
+		tempcont+=str(big_cont_list[k]['angres'])+' '
+		tempcont+=str(big_cont_list[k]['texp'])+' '
+		tempcont+=str(big_cont_list[k]['sourcename'])+' '
+		tempcont+=str(int(len(big_cont_list[k]['freq'])/4))+' '
+		tempcont+=str(big_cont_list[k]['MOUS'])+'\n'
+		cont_table_txt.write(tempcont)
+	cont_table_txt.write('-----\n')
+	cont_table_txt.close()
+	#
+	mous_table_txt=open('OUTPUTS/MOUSTable.txt','a')
+	mega_str=''
+	for k in range(len(master_MOUS_list)):
+		temp_str=str(master_MOUS_list[k]['project_code'])+' '+str(master_MOUS_list[k]['member_ous_uid'])+'\n'
+		if temp_str not in mega_str:
+			mega_str+=temp_str
+			mous_table_txt.write(str(master_MOUS_list[k]['project_code'])+' '+str(master_MOUS_list[k]['member_ous_uid'])+'\n')
+	mous_table_txt.write('-----\n')
+	mous_table_txt.close()
 
-		mlp.close()
-		fig.add_subplot(111, frameon=False)
-		fig.suptitle(name+'(z='+str(zred)+')',fontsize=fs2,weight='bold',x=0.56)
-		plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-		plt.xlabel("Integration Time [hr]",weight='bold')
-		plt.ylabel("Spatial Resolution [\"]",weight='bold')
-		for mlp_j in range(len(indexproj)):
-			plt.plot([], [], marker='s', label=ProjList[indexproj[mlp_j]], color=colorscheme[mlp_j], linestyle=None)
-		plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=4, fancybox=True, shadow=True, numpoints=1, handlelength=0)
-		plt.tight_layout(pad=5.0,w_pad=0.1,h_pad=0.3)
-		plt.savefig('OUTPUTS/'+name+'/LinePlot_'+name+'.png',dpi=300,bbox_inches='tight')
-		plt.close()
+	#
+	# Plot line observation details
+	#
+
+	gs_D = gs_FULL[3].subgridspec(4,3, wspace=0.8, hspace=0.8)
+	ax_lines_1a = plt.subplot(gs_D[0, 0])
+	ax_lines_1b = plt.subplot(gs_D[0, 1])
+	ax_lines_1c = plt.subplot(gs_D[0, 2])
+	ax_lines_1d = plt.subplot(gs_D[1, 0])
+	ax_lines_2a = plt.subplot(gs_D[1, 1])
+	ax_lines_2b = plt.subplot(gs_D[1, 2])
+	ax_lines_2c = plt.subplot(gs_D[2, 0])
+	ax_lines_2d = plt.subplot(gs_D[2, 1])
+	ax_lines_3a = plt.subplot(gs_D[2, 2])
+	ax_lines_3b = plt.subplot(gs_D[3, 0])
+	ax_lines_3c = plt.subplot(gs_D[3, 1])
+	ax_lines_3d = plt.subplot(gs_D[3, 2])
+	#Get values from line table
+	mlp=open('OUTPUTS/LineTable.txt','r')
+	mlpf=mlp.readlines()
+	line_lines=[-1,-1]
+	for mlp_i in range(len(mlpf)):
+		if mlpf[mlp_i].replace('\n','')==name:
+			line_lines[0]=mlp_i
+			for mlp_j in range(mlp_i,len(mlpf)):
+				if '----' in mlpf[mlp_j]:
+					line_lines[1]=mlp_j-1
+					break
+	#Convert observation details into arrays
+	projlist=[];linenames=[];IT=[]; AR=[]; subplotnums=[]
+	#Also include total info
+	NumLines=0; LineList=[]; BigVals=[]; ProjList=[]
+	if line_lines[1]-line_lines[0]!=1:
+		for mlp_i in range(line_lines[0]+2,line_lines[1]+1):
+			temp_mlp=mlpf[mlp_i].split(' ')
+			projlist.append(str(temp_mlp[2]))
+			AR.append(float(temp_mlp[3]))
+			IT.append(float(temp_mlp[4])/3600.)
+			if (temp_mlp[0]+' '+temp_mlp[1]) in LineList:
+				L_INDEX = LineList.index(temp_mlp[0]+' '+temp_mlp[1])
+				subplotnums.append(getsubplotnum3(L_INDEX))
+				if float(temp_mlp[4])/3600.>BigVals[L_INDEX][0]:
+					BigVals[L_INDEX][0]=float(temp_mlp[4])/3600.
+				if float(temp_mlp[3])>BigVals[L_INDEX][1]:
+					BigVals[L_INDEX][1]=float(temp_mlp[3])
+			else:
+				subplotnums.append(getsubplotnum3(NumLines))
+				NumLines+=1
+				BigVals.append([float(temp_mlp[4])/3600.,float(temp_mlp[3])])
+				LineList.append(temp_mlp[0]+' '+temp_mlp[1])
+			if str(temp_mlp[2]) not in ProjList:
+				ProjList.append(str(temp_mlp[2]))
+	indexproj=sortpl(ProjList)
+	sorted_list=sortpl2(ProjList)
+	for mlp_i in range(len(projlist)):
+		tempcolorindex=sorted_list.index(projlist[mlp_i])
+		subplotnums[mlp_i].scatter([IT[mlp_i]],[AR[mlp_i]], marker='s', color=colorscheme[tempcolorindex])
+	for mlp_i in range(12):
+		try:
+			plot_index=getsubplotnum3(mlp_i)
+			if mlp_i<NumLines:
+				plot_index.set_title(LineList[mlp_i],weight='bold',fontsize=10)
+				plot_index.set_xlim(0,1.1*BigVals[mlp_i][0])
+				plot_index.set_ylim(0,1.1*BigVals[mlp_i][1])
+			else:
+				plot_index.set_visible(False)
+		except TypeError:
+			pass
+	mlp.close()
+	fig.add_subplot(224, frameon=False)
+	plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
+	plt.xlabel("Integration Time [hr]",weight='bold')
+	plt.ylabel("Spatial Resolution [\"]",weight='bold')
+	
+	plt.savefig('OUTPUTS/Overview_'+name+'.png',dpi=300,bbox_inches='tight')
 
 	if download_products:
 		#Make sure the data directory exists
