@@ -8,6 +8,6 @@ Uses ALminer to query ALMA archive given RA, Dec, and redshift.
 -Table of line observations [LineTable.txt]
 -Table of continuum observations [LineTable.txt]
 
-Excludes mosaics, includes proprietary data.
+Excludes mosaics, proprietary data.
 
 (Gareth Jones - 27 January, 2025 - gj283@cam.ac.uk)
